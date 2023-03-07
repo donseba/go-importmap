@@ -1,6 +1,9 @@
 # go-importmap
 Golang importmap generator in early stages.
 
+For now only cdnjs has been implemented because it provides a great api to interact with. 
+There is a `Raw` client as well that mimics the process and returns the Raw field of the package struct. 
+
 Usage:
 ```go
 package main
