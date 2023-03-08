@@ -3,6 +3,9 @@ Golang importmap generator.
 
 disclaimer : There is still plenty of room for optimization. and the API might change during the early stages of development
 
+For now only cdnjs has been implemented because it provides a great api to interact with. 
+There is a `Raw` client as well that mimics the process and returns the Raw field of the package struct. 
+
 Usage:
 ```go
 package main
@@ -104,4 +107,4 @@ Files generated will look like the following:
         - json-enc.min.js
       - htmx.min.js
 ```
-as you can see the `.importmap` contains the files per version and we create the assets without a version this will allow you to `update` the file without having to update the snippet. 
+as you can see the `.importmap` contains the files per version and we create the assets without a version this will allow you to `update` the file without having to update the snippet.
