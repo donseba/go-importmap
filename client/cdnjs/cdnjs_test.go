@@ -25,7 +25,7 @@ func TestClient_Search(t *testing.T) {
 	for _, tt := range tests {
 		testName := fmt.Sprintf("%s,%s,%s", tt.name, tt.version, tt.filename)
 		t.Run(testName, func(t *testing.T) {
-			p, err := cs.Package(ctx, library.Package{
+			p, err := cs.Package(ctx, &library.Package{
 				Name:     tt.name,
 				Version:  tt.version,
 				FileName: tt.filename,

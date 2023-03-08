@@ -44,7 +44,7 @@ func New() *Client {
 	}
 }
 
-func (c *Client) Package(ctx context.Context, p library.Package) (string, error) {
+func (c *Client) Package(ctx context.Context, p *library.Package) (string, error) {
 	url := defaultApiBaseURL + p.Name
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -92,6 +92,8 @@ func (c *Client) Package(ctx context.Context, p library.Package) (string, error)
 			}
 		}
 	}
+
+	p.FileName = useFilename
 
 	path = strings.Replace(path, sr.Version, useVersion, 1)
 	path = strings.Replace(path, sr.Filename, useFilename, 1)
