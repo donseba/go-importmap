@@ -100,7 +100,7 @@ func TestImportMapCache(t *testing.T) {
 		return
 	}
 
-	if string(out) != `{"imports":{"htmx":"/useAssets/js/htmx/htmx.min.js","json-enc":"/useAssets/js/htmx/htmx.min.js"}}` {
+	if string(out) != `{"imports":{"htmx":"/assets/js/htmx/htmx.min.js","json-enc":"/assets/js/htmx/htmx.min.js"}}` {
 		t.Error("json output mismatch")
 		return
 	}
@@ -180,7 +180,7 @@ func TestImportMapRawPublish(t *testing.T) {
 		return
 	}
 
-	if string(out) != `{"imports":{"htmx":"/useAssets/js/htmx/htmx.min.js"}}` {
+	if string(out) != `{"imports":{"htmx":"/assets/js/htmx/htmx.min.js"}}` {
 		t.Error("json output mismatch")
 		return
 	}

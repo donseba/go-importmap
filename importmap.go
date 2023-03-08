@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	defaultAssetsDir  = path.Join("useAssets", "js")
-	defaultAssetsPath = "/" + strings.Join([]string{"useAssets", "js"}, "/")
+	defaultAssetsDir  = path.Join("assets", "js")
+	defaultAssetsPath = "/" + strings.Join([]string{"assets", "js"}, "/")
 	defaultCacheDir   = ".importmap"
 	defaultShimSrc    = "https://ga.jspm.io/npm:es-module-shims@1.7.0/dist/es-module-shims.js"
 )
@@ -26,19 +26,17 @@ type (
 	}
 
 	ImportMap struct {
-		Provider  Provider
-		Packages  []library.Package
-		Structure structure
-
-		clean       bool
-		useAssets   bool
-		includeShim bool
-
-		assetsDir  string
-		assetsPath string
-		cacheDir   string
-		rootDir    string
-		shimSrc    string
+		Provider    Provider          // the js library provider
+		Packages    []library.Package // the library packages we want to include
+		Structure   structure         // the output structure
+		clean       bool              // whether to clean cache and assets
+		useAssets   bool              // use local assets or not
+		includeShim bool              // include shim to support older browsers
+		assetsDir   string            // assets directory
+		assetsPath  string            // path to assets in the URL
+		cacheDir    string            // cache directory
+		rootDir     string            // application root directory
+		shimSrc     string            // shim source in case the default one does not meet requirements.
 	}
 
 	structure struct {
@@ -56,6 +54,7 @@ func New(p Provider) *ImportMap {
 		shimSrc:     defaultShimSrc,
 		includeShim: true,
 		clean:       false,
+		useAssets:   false,
 		Provider:    p,
 		Structure: structure{
 			Imports: make(map[string]string),
