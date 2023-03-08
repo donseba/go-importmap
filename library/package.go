@@ -6,5 +6,4 @@ type Package struct {
 	As       string
 	FileName string
 	Raw      string
-	cached   bool
 }

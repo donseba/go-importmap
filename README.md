@@ -33,7 +33,7 @@ func main() {
 	pr := cdnjs.New()
 
 	im := importmap.New(pr)
-	im.SetPublish(true)
+	im.UseAssets(true)
 	im.SetRootDir(exPath)
 
 	im.Packages = []library.Package{
@@ -46,6 +46,11 @@ func main() {
 			Version:  "1.8.4",
 			As:       "json-enc",
 			FileName: "ext/json-enc.min.js",
+		},
+		{
+			Name:    "htmx-latest",
+			Version: "1.8.6",
+			Raw:     "https://unpkg.com/browse/htmx.org@1.8.6/dist/htmx.min.js",
 		},
 	}
 

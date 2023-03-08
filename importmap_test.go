@@ -24,6 +24,11 @@ func TestImportMap(t *testing.T) {
 			As:       "json-enc",
 			FileName: "ext/json-enc.min.js",
 		},
+		{
+			Name:    "htmx",
+			Version: "1.8.5",
+			As:      "json-enc",
+		},
 	}
 
 	err := im.Fetch(ctx)
@@ -38,16 +43,132 @@ func TestImportMap(t *testing.T) {
 		return
 	}
 
-	if string(out) != `{"imports":{"htmx":"https://cdnjs.cloudflare.com/ajax/libs/htmx/1.8.6/htmx.min.js","json-enc":"https://cdnjs.cloudflare.com/ajax/libs/htmx/1.8.6/ext/json-enc.min.js"}}` {
+	if string(out) != `{"imports":{"htmx":"https://cdnjs.cloudflare.com/ajax/libs/htmx/1.8.6/htmx.min.js","json-enc":"https://cdnjs.cloudflare.com/ajax/libs/htmx/1.8.5/htmx.min.js"}}` {
 		t.Error("json output mismatch")
 		return
 	}
+}
 
-	tmpl, err := im.Render()
+func TestImportMapCache(t *testing.T) {
+	ctx := context.Background()
+	pr := cdnjs.New()
+	im := New(pr)
+	im.UseAssets(true)
+	im.UseShim(true)
+	im.SetClean(true)
+
+	im.Packages = []library.Package{
+		{
+			Name:    "htmx",
+			Version: "1.8.6",
+		},
+		{
+			Name:     "htmx",
+			Version:  "1.8.6",
+			As:       "json-enc",
+			FileName: "ext/json-enc.min.js",
+		},
+		{
+			Name:    "htmx",
+			Version: "1.8.5",
+			As:      "json-enc",
+		},
+	}
+
+	err := im.Fetch(ctx)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	t.Log(tmpl)
+	out, err := im.Marshal()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if string(out) != `{"imports":{"htmx":"/assets/js/htmx/htmx.min.js","json-enc":"/assets/js/htmx/htmx.min.js"}}` {
+		t.Error("json output mismatch")
+		return
+	}
+
+	_, err = im.HTML()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	_, err = im.Render()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	
+	_, err = im.MarshalIndent()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+}
+
+func TestImportMapRaw(t *testing.T) {
+	ctx := context.Background()
+	pr := cdnjs.New()
+	im := New(pr)
+
+	im.Packages = []library.Package{
+		{
+			Name: "htmx",
+			Raw:  "https://some.url.to/repo/with.js",
+		},
+	}
+
+	err := im.Fetch(ctx)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	out, err := im.Marshal()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if string(out) != `{"imports":{"htmx":"https://some.url.to/repo/with.js"}}` {
+		t.Error("json output mismatch")
+		return
+	}
+}
+
+func TestImportMapRawPublish(t *testing.T) {
+	ctx := context.Background()
+	pr := cdnjs.New()
+	im := New(pr)
+	im.UseAssets(true)
+
+	im.Packages = []library.Package{
+		{
+			Name:    "htmx",
+			Raw:     "https://unpkg.com/browse/htmx.org@1.8.6/dist/htmx.min.js",
+			Version: "1.8.6",
+		},
+	}
+
+	err := im.Fetch(ctx)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	out, err := im.Marshal()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if string(out) != `{"imports":{"htmx":"/assets/js/htmx/htmx.min.js"}}` {
+		t.Error("json output mismatch")
+		return
+	}
 }
