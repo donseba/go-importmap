@@ -23,7 +23,7 @@ func main() {
 	pr := cdnjs.New()
 
 	im := importmap.New(pr)
-	im.UseAssets(true)
+	im.SetUseAssets(true)
 	im.SetRootDir(exPath)
 
 	im.Packages = []library.Package{

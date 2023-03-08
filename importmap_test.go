@@ -2,6 +2,8 @@ package importmap
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/donseba/go-importmap/client/cdnjs"
@@ -50,11 +52,22 @@ func TestImportMap(t *testing.T) {
 }
 
 func TestImportMapCache(t *testing.T) {
+	ex, err := os.Executable()
+	if err != nil {
+		panic(err)
+	}
+	exPath := filepath.Dir(ex)
+
 	ctx := context.Background()
 	pr := cdnjs.New()
 	im := New(pr)
-	im.UseAssets(true)
-	im.UseShim(true)
+	im.SetAssetsDir(defaultAssetsDir)
+	im.SetAssetsPath(defaultAssetsPath)
+	im.SetCacheDir(defaultCacheDir)
+	im.SetShimSrc(defaultShimSrc)
+	im.SetRootDir(exPath)
+	im.SetUseAssets(true)
+	im.SetIncludeShim(true)
 	im.SetClean(true)
 
 	im.Packages = []library.Package{
@@ -75,7 +88,7 @@ func TestImportMapCache(t *testing.T) {
 		},
 	}
 
-	err := im.Fetch(ctx)
+	err = im.Fetch(ctx)
 	if err != nil {
 		t.Error(err)
 		return
@@ -87,12 +100,12 @@ func TestImportMapCache(t *testing.T) {
 		return
 	}
 
-	if string(out) != `{"imports":{"htmx":"/assets/js/htmx/htmx.min.js","json-enc":"/assets/js/htmx/htmx.min.js"}}` {
+	if string(out) != `{"imports":{"htmx":"/useAssets/js/htmx/htmx.min.js","json-enc":"/useAssets/js/htmx/htmx.min.js"}}` {
 		t.Error("json output mismatch")
 		return
 	}
 
-	_, err = im.HTML()
+	_, err = im.Imports()
 	if err != nil {
 		t.Error(err)
 		return
@@ -103,7 +116,7 @@ func TestImportMapCache(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	
+
 	_, err = im.MarshalIndent()
 	if err != nil {
 		t.Error(err)
@@ -145,7 +158,7 @@ func TestImportMapRawPublish(t *testing.T) {
 	ctx := context.Background()
 	pr := cdnjs.New()
 	im := New(pr)
-	im.UseAssets(true)
+	im.SetUseAssets(true)
 
 	im.Packages = []library.Package{
 		{
@@ -167,7 +180,7 @@ func TestImportMapRawPublish(t *testing.T) {
 		return
 	}
 
-	if string(out) != `{"imports":{"htmx":"/assets/js/htmx/htmx.min.js"}}` {
+	if string(out) != `{"imports":{"htmx":"/useAssets/js/htmx/htmx.min.js"}}` {
 		t.Error("json output mismatch")
 		return
 	}
