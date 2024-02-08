@@ -51,7 +51,7 @@ func (p *Package) HasCache(rootDir string, cacheDir string) bool {
 func (p *Package) MakeCache(rootDir string, cacheDir string, src string) error {
 	fullPath := path.Join(rootDir, p.CacheDir(cacheDir))
 
-	err := os.MkdirAll(filepath.Dir(fullPath), os.ModeDir)
+	err := os.MkdirAll(filepath.Dir(fullPath), os.FileMode(0755))
 	if err != nil {
 		return err
 	}
@@ -87,12 +87,12 @@ func (p *Package) HasAssets(rootDir string, assetsDir string) bool {
 	return true
 }
 
-// MakeAssets copies the cache files to the assets path without the version
+// MakeAssets copies the cache files to the asset path without the version
 func (p *Package) MakeAssets(rootDir string, cacheDir string, assetsDir string) error {
 	cachePath := path.Join(rootDir, p.CacheDir(cacheDir))
 	assetsPath := path.Join(rootDir, p.AssetsDir(assetsDir))
 
-	err := os.MkdirAll(filepath.Dir(assetsPath), os.ModeDir)
+	err := os.MkdirAll(filepath.Dir(assetsPath), os.FileMode(0755))
 	if err != nil {
 		return err
 	}
