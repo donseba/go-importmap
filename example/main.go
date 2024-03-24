@@ -4,36 +4,48 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 
 	"github.com/donseba/go-importmap"
-	"github.com/donseba/go-importmap/client/cdnjs"
 	"github.com/donseba/go-importmap/library"
 )
 
 func main() {
 	ctx := context.TODO()
-	pr := cdnjs.New()
 
-	im := importmap.New(pr)
-	im.SetUseAssets(true)
+	im := importmap.
+		NewDefaults().
+		WithLogger(slog.Default()).
+		ShimPath("https://ga.jspm.io/npm:es-module-shims@1.7.0")
 
-	im.Packages = []library.Package{
+	im.WithPackages([]library.Package{
 		{
 			Name:    "htmx",
-			Version: "1.8.5",
+			Version: "1.8.5", // locking a specific version
+			Require: []library.Include{
+				{
+					File: "htmx.min.js",
+				},
+				{
+					File: "/ext/json-enc.js",
+					As:   "json-enc",
+				},
+			},
 		},
 		{
-			Name:     "htmx",
-			Version:  "1.8.4",
-			As:       "json-enc",
-			FileName: "ext/json-enc.min.js",
+			Name: "bootstrap",
+			Require: []library.Include{
+				{
+					File: "css/bootstrap.min.css",
+					As:   "bootstrap",
+				},
+				{
+					File: "js/bootstrap.min.js",
+					As:   "bootstrap",
+				},
+			},
 		},
-		{
-			Name:    "htmx-latest",
-			Version: "1.8.6",
-			Raw:     "https://unpkg.com/browse/htmx.org@1.8.6/dist/htmx.min.js",
-		},
-	}
+	})
 
 	// retrieve all libraries
 	err := im.Fetch(ctx)
