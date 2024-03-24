@@ -1,207 +1,222 @@
 package importmap
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/donseba/go-importmap/client/cdnjs"
+	"github.com/donseba/go-importmap/library"
 	"html/template"
+	"log/slog"
 	"os"
 	"path"
-	"path/filepath"
-	"strings"
-
-	"github.com/donseba/go-importmap/library"
 )
 
 var (
-	defaultAssetsDir  = path.Join("assets", "js")
-	defaultAssetsPath = "/" + strings.Join([]string{"assets", "js"}, "/")
-	defaultCacheDir   = ".importmap"
-	defaultShimSrc    = "https://ga.jspm.io/npm:es-module-shims@1.7.0/dist/es-module-shims.js"
+	defaultAssetsDir = "assets"
+	defaultCacheDir  = ".importmap"
+	defaultShimSrc   = "https://ga.jspm.io/npm:es-module-shims@1.7.0/dist/es-module-shims.js"
 )
 
 type (
 	Provider interface {
-		Package(ctx context.Context, p *library.Package) (string, error)
+		FetchPackageFiles(ctx context.Context, name, version string) (library.Files, string, error)
 	}
 
 	ImportMap struct {
-		Provider    Provider          // the js library provider
-		Packages    []library.Package // the library packages we want to include
-		Structure   structure         // the output structure
-		clean       bool              // whether to clean cache and assets
-		useAssets   bool              // use local assets or not
-		includeShim bool              // include shim to support older browsers
-		assetsDir   string            // assets directory
-		assetsPath  string            // path to assets in the URL
-		cacheDir    string            // cache directory
-		rootDir     string            // application root directory
-		shimSrc     string            // shim source in case the default one does not meet requirements.
+		provider  Provider          // the js library provider
+		packages  []library.Package // the library packages we want to include
+		Structure structure         // the output structure
+
+		rootDir   string
+		assetsDir *string
+		cacheDir  *string
+
+		shim   string
+		logger *slog.Logger
 	}
 
 	structure struct {
 		Imports map[string]string            `json:"imports,omitempty"`
 		Scopes  map[string]map[string]string `json:"scopes,omitempty"`
+		Styles  map[string]string            `json:"styles,omitempty"`
 	}
 )
 
 // New returns a new instance of the ImportMap
-func New(p Provider) *ImportMap {
+func New() *ImportMap {
 	return &ImportMap{
-		cacheDir:    defaultCacheDir,
-		assetsDir:   defaultAssetsDir,
-		assetsPath:  defaultAssetsPath,
-		shimSrc:     defaultShimSrc,
-		includeShim: true,
-		clean:       false,
-		useAssets:   false,
-		Provider:    p,
 		Structure: structure{
 			Imports: make(map[string]string),
 			Scopes:  make(map[string]map[string]string),
+			Styles:  make(map[string]string),
 		},
 	}
 }
 
-// Fetch retrieves all packages locally or remotely
-func (im *ImportMap) Fetch(ctx context.Context) error {
-	if im.clean {
-		err := os.RemoveAll(path.Join(im.RootDir(), im.cacheDir))
-		if err != nil {
-			return err
-		}
-		err = os.RemoveAll(path.Join(im.RootDir(), im.assetsDir))
-		if err != nil {
-			return err
-		}
+func NewDefaults() *ImportMap {
+	return New().WithDefaults()
+}
+
+func (im *ImportMap) WithDefaults() *ImportMap {
+	im.CacheDir(defaultCacheDir)
+	im.AssetsDir(defaultAssetsDir)
+	im.ShimPath(defaultShimSrc)
+	im.WithProvider(cdnjs.New())
+	return im
+}
+
+func (im *ImportMap) WithProvider(p Provider) *ImportMap {
+	im.provider = p
+	return im
+}
+
+func (im *ImportMap) WithPackages(p []library.Package) *ImportMap {
+	im.packages = p
+	return im
+}
+
+func (im *ImportMap) WithPackage(p library.Package) *ImportMap {
+	im.packages = append(im.packages, p)
+	return im
+}
+
+func (im *ImportMap) WithLogger(logger *slog.Logger) *ImportMap {
+	im.logger = logger
+	return im
+}
+
+func (im *ImportMap) Clean() *ImportMap {
+	cacheDir := defaultCacheDir
+	if im.cacheDir != nil {
+		cacheDir = *im.cacheDir
 	}
 
-	for _, pack := range im.Packages {
-		name := pack.Name
-		if pack.As != "" {
-			name = pack.As
+	assetsDir := defaultAssetsDir
+	if im.assetsDir != nil {
+		assetsDir = *im.assetsDir
+	}
+
+	_ = os.RemoveAll(path.Join(im.rootDir, cacheDir))
+	_ = os.RemoveAll(path.Join(im.rootDir, assetsDir))
+	return im
+}
+
+func (im *ImportMap) CacheDir(dir string) *ImportMap {
+	im.cacheDir = &dir
+	return im
+}
+
+func (im *ImportMap) AssetsDir(dir string) *ImportMap {
+	im.assetsDir = &dir
+	return im
+}
+
+func (im *ImportMap) RootDir(dir string) *ImportMap {
+	im.rootDir = dir
+	return im
+}
+
+func (im *ImportMap) Shim() string {
+	return im.shim
+}
+
+func (im *ImportMap) ShimPath(sp string) *ImportMap {
+	im.shim = sp
+	return im
+}
+
+func (im *ImportMap) Fetch(ctx context.Context) error {
+	for _, pkg := range im.packages {
+		if im.logger != nil {
+			im.logger.InfoContext(ctx, "fetching assets", "package", pkg.Name)
+		}
+		allFiles, version, err := im.provider.FetchPackageFiles(ctx, pkg.Name, pkg.Version)
+		if err != nil {
+			return err
 		}
 
-		if pack.Raw != "" {
-			pathToRetrieve := pack.Raw
+		if pkg.Version == "" {
+			pkg.Version = version
+		}
 
-			if pack.FileName == "" {
-				pack.FileName = path.Base(pack.Raw)
+		if im.cacheDir != nil && !pkg.HasCache(im.rootDir, *im.cacheDir) {
+			fmt.Println("building cache")
+			for _, file := range allFiles {
+				err = pkg.MakeCache(im.rootDir, *im.cacheDir, file.LocalPath, file.Path)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		var cacheDir string
+		if im.cacheDir != nil {
+			cacheDir = *im.cacheDir
+		}
+
+		if im.logger != nil {
+			im.logger.InfoContext(ctx, "building assets", "package", pkg.Name, "version", pkg.Version)
+		}
+
+		assetFiles := make(library.Includes, 0)
+
+		for _, file := range allFiles {
+			var as string
+			if len(pkg.Require) > 0 {
+				req := pkg.Require.Get(file.LocalPath)
+				if req == nil {
+					continue
+				}
+
+				as = req.Name()
+			} else {
+				as = file.LocalPath
 			}
 
-			if im.useAssets {
-				if !pack.HasCache(im.RootDir(), im.cacheDir) {
-					err := pack.MakeCache(im.RootDir(), im.cacheDir, pack.Raw)
+			if im.assetsDir != nil {
+				if !pkg.HasAssetFile(im.rootDir, *im.assetsDir, file.LocalPath) {
+					err = pkg.MakeAssets(im.rootDir, cacheDir, *im.assetsDir, file.LocalPath, file.Path)
 					if err != nil {
 						return err
 					}
 				}
 
-				err := pack.MakeAssets(im.RootDir(), im.cacheDir, im.assetsDir)
-				if err != nil {
-					return err
-				}
+				assetFiles = append(assetFiles, library.Include{
+					File: path.Join(im.rootDir, *im.assetsDir, file.LocalPath),
+					As:   as,
+				})
+			} else {
+				assetFiles = append(assetFiles, library.Include{
+					File: file.Path,
+					As:   as,
+				})
+			}
+		}
 
-				pathToRetrieve = pack.AssetsPath(im.assetsPath)
+		for _, file := range assetFiles {
+			// check if it starts with a /, if not, add it
+			if file.File[0] != '/' && file.File[0] != 'h' {
+				file.File = "/" + file.File
+
 			}
 
-			im.Structure.Imports[name] = pathToRetrieve
-			continue
-		}
-
-		pathToRetrieve, err := im.Provider.Package(ctx, &pack)
-		if err != nil {
-			return err
-		}
-
-		if im.useAssets && pack.HasAssets(im.RootDir(), im.assetsPath) {
-			im.Structure.Imports[name] = pack.AssetsPath(im.assetsPath)
-			continue
-		}
-
-		if im.useAssets {
-			if !pack.HasCache(im.RootDir(), im.cacheDir) {
-				err = pack.MakeCache(im.RootDir(), im.cacheDir, pathToRetrieve)
-				if err != nil {
-					return err
-				}
+			switch library.ExtractFileType(file.File) {
+			case library.FileTypeCSS:
+				im.Structure.Styles[file.As] = file.File
+			case library.FileTypeJS:
+				im.Structure.Imports[file.As] = file.File
 			}
-
-			err = pack.MakeAssets(im.RootDir(), im.cacheDir, im.assetsDir)
-			if err != nil {
-				return err
-			}
-
-			pathToRetrieve = pack.AssetsPath(im.assetsPath)
 		}
 
-		im.Structure.Imports[name] = pathToRetrieve
+		for _, req := range pkg.Require {
+			if req.Raw != "" {
+				im.Structure.Imports[req.Name()] = req.Raw
+			}
+		}
 	}
 
 	return nil
-}
-
-// SetRootDir sets the root dir to use ase base for both cache and useAssets directory
-func (im *ImportMap) SetRootDir(d string) {
-	im.rootDir = d
-}
-
-// SetCacheDir sets the path used for cache
-func (im *ImportMap) SetCacheDir(d string) {
-	im.cacheDir = d
-}
-
-// SetAssetsDir sets assetsDir to the desired value
-func (im *ImportMap) SetAssetsDir(d string) {
-	im.assetsDir = d
-}
-
-// SetAssetsPath sets assetsPath to the desired value
-func (im *ImportMap) SetAssetsPath(d string) {
-	im.assetsPath = d
-}
-
-// SetClean sets the flag to do a clean run
-func (im *ImportMap) SetClean(b bool) {
-	im.clean = b
-}
-
-// SetIncludeShim sets the flag to include the shim
-func (im *ImportMap) SetIncludeShim(b bool) {
-	im.includeShim = b
-}
-
-// SetShimSrc sets the source of the shim
-func (im *ImportMap) SetShimSrc(s string) {
-	im.shimSrc = s
-}
-
-// SetUseAssets sets the flag to useAssets the files locally
-func (im *ImportMap) SetUseAssets(b bool) {
-	im.useAssets = b
-}
-
-// RootDir retrieves the root dir
-func (im *ImportMap) RootDir() string {
-	if im.rootDir == "" {
-		ex, err := os.Executable()
-		if err != nil {
-			return ""
-		}
-		im.rootDir = filepath.Dir(ex)
-	}
-
-	return im.rootDir
-}
-
-// GetShim gets the path to the shim
-func (im *ImportMap) GetShim() string {
-	return im.shimSrc
-}
-
-// IncludeShim returns includeShim
-func (im *ImportMap) IncludeShim() bool {
-	return im.includeShim
 }
 
 // Marshal returns the Structure as JSON.
@@ -214,9 +229,15 @@ func (im *ImportMap) MarshalIndent() ([]byte, error) {
 	return json.MarshalIndent(im.Structure, "", "  ")
 }
 
-// Imports returns the structure in HTML.
+// Imports return the structure in JSON/HTML.
 func (im *ImportMap) Imports() (template.HTML, error) {
-	b, err := json.MarshalIndent(im.Structure, "", "  ")
+	var in = struct {
+		Imports map[string]string `json:"imports"`
+	}{
+		Imports: im.Structure.Imports,
+	}
+
+	b, err := json.Marshal(in)
 	if err != nil {
 		return "", err
 	}
@@ -224,21 +245,70 @@ func (im *ImportMap) Imports() (template.HTML, error) {
 	return template.HTML(b), nil
 }
 
+// ImportsIndent return the structure in JSON/HTML.
+func (im *ImportMap) ImportsIndent() (template.HTML, error) {
+	var in = struct {
+		Imports map[string]string `json:"imports"`
+	}{
+		Imports: im.Structure.Imports,
+	}
+
+	b, err := json.MarshalIndent(in, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	return template.HTML(b), nil
+}
+
+func (im *ImportMap) Scopes() (template.HTML, error) {
+	b, err := json.MarshalIndent(im.Structure.Scopes, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	return template.HTML(b), nil
+}
+
+func (im *ImportMap) Styles() (template.HTML, error) {
+	if im.Structure.Styles == nil {
+		return "", nil
+	}
+
+	var out string
+	for k, v := range im.Structure.Styles {
+		out += fmt.Sprintf(`<link rel="stylesheet" href="%s" as="%s">`, v, k)
+	}
+
+	return template.HTML(out), nil
+}
+
 // Render returns an HTML snippet to use in a template
 func (im *ImportMap) Render() (template.HTML, error) {
-	t, err := template.New("").Parse(`{{ if .IncludeShim }}<script async src="{{ .GetShim }}"></script>{{ end }}
-<script type="importmap">
-{{ .Imports }}
-</script>`)
-	if err != nil {
-		return "", err
+	var out template.HTML
+
+	for k, v := range im.Structure.Styles {
+		out += template.HTML(fmt.Sprintf(`<link rel="stylesheet" href="%s" as="%s"/>
+`, v, k))
 	}
 
-	var buf bytes.Buffer
-	err = t.Execute(&buf, im)
-	if err != nil {
-		return "", err
+	if im.shim != "" {
+		out += template.HTML(fmt.Sprintf(`<script async src="%s"></script>
+`, im.shim))
 	}
 
-	return template.HTML(buf.String()), nil
+	if len(im.Structure.Imports) > 0 {
+		out += `<script type="importmap">
+`
+		b, err := json.MarshalIndent(im.Structure.Imports, "", "  ")
+		if err != nil {
+			return "", err
+		}
+
+		out += template.HTML(b)
+		out += `
+</script>`
+	}
+
+	return out, nil
 }

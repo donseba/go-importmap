@@ -5,10 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
-	"strings"
-
 	"github.com/donseba/go-importmap/library"
+	"net/http"
 )
 
 var (
@@ -44,59 +42,56 @@ func New() *Client {
 	}
 }
 
-func (c *Client) Package(ctx context.Context, p *library.Package) (string, error) {
-	url := defaultApiBaseURL + p.Name
+func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (library.Files, string, error) {
+	url := defaultApiBaseURL + name
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", errors.New(fmt.Sprintf("client api responded with code %d", resp.StatusCode))
+		return nil, "", errors.New(fmt.Sprintf("client api responded with code %d", resp.StatusCode))
 	}
 
 	var sr SearchResponse
 	err = json.NewDecoder(resp.Body).Decode(&sr)
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 
 	var (
-		useVersion  = sr.Version
-		useFilename = sr.Filename
-		path        = sr.Latest
+		useVersion = sr.Version
 	)
 
-	if p.Version != "" && p.Version != useVersion {
+	if version != "" && version != useVersion {
 		for _, v := range sr.Versions {
-			if p.Version == v {
+			if version == v {
 				useVersion = v
 				break
 			}
 		}
 	}
 
-	if p.FileName != "" && p.FileName != useFilename {
-		for _, assets := range sr.Assets {
-			for _, v := range assets.Files {
-				if p.FileName == v {
-					useFilename = v
-				}
-			}
+	basePath := c.cdnBaseURL + name + "/" + useVersion + "/"
+
+	var files library.Files
+
+	for _, assets := range sr.Assets {
+		for _, v := range assets.Files {
+			files = append(files, library.File{
+				Type:      library.ExtractFileType(v),
+				Path:      basePath + v,
+				LocalPath: v,
+			})
 		}
 	}
 
-	p.FileName = useFilename
-
-	path = strings.Replace(path, sr.Version, useVersion, 1)
-	path = strings.Replace(path, sr.Filename, useFilename, 1)
-
-	return path, nil
+	return files, useVersion, nil
 }
