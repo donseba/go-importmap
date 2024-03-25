@@ -300,7 +300,14 @@ func (im *ImportMap) Render() (template.HTML, error) {
 	if len(im.Structure.Imports) > 0 {
 		out += `<script type="importmap">
 `
-		b, err := json.MarshalIndent(im.Structure.Imports, "", "  ")
+
+		data := struct {
+			Imports map[string]string `json:"imports"`
+		}{
+			Imports: im.Structure.Imports,
+		}
+
+		b, err := json.MarshalIndent(data, "", "  ")
 		if err != nil {
 			return "", err
 		}
