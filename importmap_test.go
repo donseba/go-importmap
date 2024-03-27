@@ -17,36 +17,28 @@ func TestImportMapWithLocalAssets(t *testing.T) {
 		WithDefaults().
 		WithProvider(pr).
 		WithPackages([]library.Package{
-			//{
-			//	Name:    "htmx",
-			//	Version: "1.9.10",
-			//	Require: []library.Include{
-			//		{
-			//			File: "htmx.min.js",
-			//		},
-			//		{
-			//			File: "/ext/json-enc.js",
-			//			As:   "json-enc",
-			//		},
-			//	},
-			//},
-			//{
-			//	Name: "bootstrap",
-			//	Require: []library.Include{
-			//		{
-			//			File: "css/bootstrap.min.css",
-			//		},
-			//		{
-			//			File: "js/bootstrap.min.js",
-			//			As:   "bootstrap",
-			//		},
-			//	},
-			//},
 			{
-				Name: "tailwindcss",
+				Name:    "htmx",
+				Version: "1.9.10",
 				Require: []library.Include{
 					{
-						File: "tailwind.min.css",
+						File: "htmx.min.js",
+					},
+					{
+						File: "/ext/json-enc.js",
+						As:   "json-enc",
+					},
+				},
+			},
+			{
+				Name: "bootstrap",
+				Require: []library.Include{
+					{
+						File: "css/bootstrap.min.css",
+					},
+					{
+						File: "js/bootstrap.min.js",
+						As:   "bootstrap",
 					},
 				},
 			},
