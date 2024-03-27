@@ -141,7 +141,10 @@ func (im *ImportMap) Fetch(ctx context.Context) error {
 		}
 
 		if im.cacheDir != nil && !pkg.HasCache(im.rootDir, *im.cacheDir) {
-			fmt.Println("building cache")
+			if im.logger != nil {
+				im.logger.InfoContext(ctx, "building cache", "package", pkg.Name, "version", pkg.Version)
+			}
+
 			for _, file := range allFiles {
 				err = pkg.MakeCache(im.rootDir, *im.cacheDir, file.LocalPath, file.Path)
 				if err != nil {
