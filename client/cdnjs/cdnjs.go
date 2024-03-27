@@ -45,6 +45,8 @@ func New() *Client {
 func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (library.Files, string, error) {
 	url := defaultApiBaseURL + name
 
+	fmt.Println("url: ", url)
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, "", err
@@ -91,6 +93,14 @@ func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (l
 				LocalPath: v,
 			})
 		}
+	}
+
+	if len(files) == 0 && sr.Filename != "" {
+		files = append(files, library.File{
+			Type:      library.ExtractFileType(sr.Filename),
+			Path:      basePath + sr.Filename,
+			LocalPath: sr.Filename,
+		})
 	}
 
 	return files, useVersion, nil

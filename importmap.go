@@ -183,7 +183,7 @@ func (im *ImportMap) Fetch(ctx context.Context) error {
 				}
 
 				assetFiles = append(assetFiles, library.Include{
-					File: path.Join(im.rootDir, *im.assetsDir, file.LocalPath),
+					File: path.Join(im.rootDir, pkg.AssetsDir(*im.assetsDir), file.LocalPath),
 					As:   as,
 				})
 			} else {
