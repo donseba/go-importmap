@@ -56,7 +56,8 @@ func TestImportMapWithLocalAssets(t *testing.T) {
 		return
 	}
 
-	if string(out) != `{"imports":{"bootstrap":"/assets/js/bootstrap.min.js","htmx":"/assets/htmx.min.js","json-enc":"/assets/ext/json-enc.js"}}` {
+	if string(out) != `{"imports":{"bootstrap":"/assets/bootstrap/js/bootstrap.min.js","htmx":"/assets/htmx/htmx.min.js","json-enc":"/assets/htmx/ext/json-enc.js"}}` {
+		t.Log(out)
 		t.Error("json output mismatch")
 		return
 	}
@@ -67,7 +68,8 @@ func TestImportMapWithLocalAssets(t *testing.T) {
 		return
 	}
 
-	if string(outStyles) != `<link rel="stylesheet" href="/assets/css/bootstrap.min.css" as="bootstrap">` {
+	if string(outStyles) != `<link rel="stylesheet" href="/assets/bootstrap/css/bootstrap.min.css" as="bootstrap">` {
+		t.Log(outStyles)
 		t.Error("json output mismatch")
 		return
 	}
@@ -78,14 +80,15 @@ func TestImportMapWithLocalAssets(t *testing.T) {
 		return
 	}
 
-	t.Log(full)
-	if string(full) != `<link rel="stylesheet" href="/assets/css/bootstrap.min.css" as="bootstrap"/>
+	if string(full) != `<link rel="stylesheet" href="/assets/bootstrap/css/bootstrap.min.css" as="bootstrap"/>
 <script async src="https://ga.jspm.io/npm:es-module-shims@1.7.0/dist/es-module-shims.js"></script>
 <script type="importmap">
 {
-  "bootstrap": "/assets/js/bootstrap.min.js",
-  "htmx": "/assets/htmx.min.js",
-  "json-enc": "/assets/ext/json-enc.js"
+  "imports": {
+    "bootstrap": "/assets/bootstrap/js/bootstrap.min.js",
+    "htmx": "/assets/htmx/htmx.min.js",
+    "json-enc": "/assets/htmx/ext/json-enc.js"
+  }
 }
 </script>` {
 		t.Error("json output mismatch")

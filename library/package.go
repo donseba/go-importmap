@@ -96,17 +96,13 @@ func (p *Package) MakeCache(rootDir string, cacheDir string, filePath string, sr
 }
 
 // AssetsDir returns the assets dir for the current package, we will store all files in here
-func (p *Package) AssetsDir(cacheDir string) string {
-	version := "latest"
-	if p.Version != "" {
-		version = p.Version
-	}
-	return path.Join(cacheDir, p.Name, version)
+func (p *Package) AssetsDir(assets string) string {
+	return path.Join(assets, p.Name)
 }
 
 // HasAssets checks if the package has assets on disk
 func (p *Package) HasAssets(rootDir string, assetsDir string) bool {
-	fullPath := path.Join(rootDir, p.CacheDir(assetsDir))
+	fullPath := path.Join(rootDir, p.AssetsDir(assetsDir))
 
 	if _, err := os.Stat(fullPath); errors.Is(err, os.ErrNotExist) {
 		return false
@@ -116,7 +112,7 @@ func (p *Package) HasAssets(rootDir string, assetsDir string) bool {
 }
 
 func (p *Package) HasAssetFile(rootDir string, assetsDir string, filePath string) bool {
-	fullPath := path.Join(rootDir, p.CacheDir(assetsDir), filePath)
+	fullPath := path.Join(rootDir, p.AssetsDir(assetsDir), filePath)
 
 	if _, err := os.Stat(fullPath); errors.Is(err, os.ErrNotExist) {
 		return false

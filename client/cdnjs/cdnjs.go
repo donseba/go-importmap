@@ -93,5 +93,13 @@ func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (l
 		}
 	}
 
+	if len(files) == 0 && sr.Filename != "" {
+		files = append(files, library.File{
+			Type:      library.ExtractFileType(sr.Filename),
+			Path:      basePath + sr.Filename,
+			LocalPath: sr.Filename,
+		})
+	}
+
 	return files, useVersion, nil
 }
