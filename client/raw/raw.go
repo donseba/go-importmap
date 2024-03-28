@@ -3,7 +3,7 @@ package raw
 import (
 	"context"
 
-	"github.com/donseba/go-importmap/library"
+	"github.com/sparkupine/importmap/library"
 )
 
 type (

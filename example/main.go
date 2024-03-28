@@ -6,8 +6,8 @@ import (
 	"log"
 	"log/slog"
 
-	"github.com/donseba/go-importmap"
-	"github.com/donseba/go-importmap/library"
+	"github.com/sparkupine/importmap"
+	"github.com/sparkupine/importmap/library"
 )
 
 func main() {

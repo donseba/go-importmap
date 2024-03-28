@@ -2,11 +2,13 @@ package library
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -20,10 +22,24 @@ type Include struct {
 
 func (I Includes) Get(s string) *Include {
 	for _, i := range I {
-		if strings.Trim(i.File, `/`) == s {
+		// Compile the pattern, assuming 'File' is a valid regex pattern
+		pattern := "^" + strings.Trim(i.File, `/`) + "$"    // Ensure the pattern matches the entire string
+		pattern = strings.Replace(pattern, "**/", "**", -1) // Ensure the pattern matches the entire string
+		pattern = strings.Replace(pattern, ".", "\\.", -1)  // Ensure the pattern matches the entire string
+		pattern = strings.Replace(pattern, "**", ".*", -1)  // Ensure the pattern matches the entire string
+
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			fmt.Println(err)
+			// Handle the error (e.g., log or panic depending on your error handling strategy)
+			continue // For this example, we'll just skip this iteration
+		}
+
+		if re.MatchString(s) {
 			return &i
 		}
 	}
+
 	return nil
 }
 
@@ -34,6 +50,10 @@ func (I Include) Name() string {
 
 	as := strings.Split(path.Base(I.File), ".")
 	if len(as) > 0 {
+		as = strings.Split(as[0], "*")
+		if len(as) > 0 {
+			return as[len(as)-1]
+		}
 		return as[0]
 	}
 

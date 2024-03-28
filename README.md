@@ -16,7 +16,7 @@ Features
 To use ImportMap in your Go project, install it as a module:
 
 ```bash
-go get github.com/donseba/go-importmap
+go get github.com/sparkupine/importmap
 ```
 ###  Usage Example
 
@@ -31,8 +31,8 @@ import (
     "log"
     "log/slog"
 
-    "github.com/donseba/go-importmap"
-    "github.com/donseba/go-importmap/library"
+    "github.com/sparkupine/importmap"
+    "github.com/sparkupine/importmap/library"
 )
 
 func main() {
