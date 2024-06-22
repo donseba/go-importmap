@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/sparkupine/importmap/library"
+	"github.com/donseba/go-importmap/library"
 	"net/http"
 	"strings"
 )

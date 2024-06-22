@@ -2,9 +2,9 @@ package importmap
 
 import (
 	"context"
-	"github.com/sparkupine/importmap/client/cdnjs"
-	"github.com/sparkupine/importmap/client/jsdelivr"
-	"github.com/sparkupine/importmap/library"
+	"github.com/donseba/go-importmap/client/cdnjs"
+	"github.com/donseba/go-importmap/client/jsdelivr"
+	"github.com/donseba/go-importmap/library"
 	"log/slog"
 	"testing"
 )

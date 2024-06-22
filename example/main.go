@@ -3,11 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/donseba/go-importmap"
+	"github.com/donseba/go-importmap/library"
 	"log"
 	"log/slog"
-
-	"github.com/sparkupine/importmap"
-	"github.com/sparkupine/importmap/library"
 )
 
 func main() {

@@ -1,3 +1,3 @@
-module github.com/sparkupine/importmap
+module github.com/donseba/go-importmap
 
-go 1.22
+go 1.22.3
