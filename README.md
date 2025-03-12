@@ -1,24 +1,31 @@
 # go-importmap
 
-ImportMap is a powerful Go package designed to simplify the management of JavaScript library dependencies for modern web applications. It facilitates the fetching, caching, and generation of import maps, allowing for seamless integration of JavaScript and CSS libraries directly into your projects. By abstracting the complexity of handling external library dependencies, ImportMap enables developers to focus on building feature-rich web applications without worrying about the underlying details of dependency management.
-Features
+go-importmap is a lightweight Go package for managing JavaScript and CSS dependencies. It fetches, caches, and generates import maps from popular CDNs, letting you focus on building your web applications.
 
- - **Flexible Provider Interface**: Easily extendable to support different sources for fetching library packages, with a default implementation for cdnjs.
- - **Automatic Caching**: Libraries are fetched and cached locally to improve load times and reduce external requests.
- - **Import Map Generation**: Automatically generates import maps for included JavaScript and CSS files, adhering to the latest web standards.
- - **Customizable Directories**: Configurable cache and assets directories to fit the structure of your project.
- - **Shim Management**: Supports the inclusion of ES module shims for backward compatibility with non-module browsers.
- - **Dynamic Package Management**: Add individual or multiple library packages with optional versioning and dependency requirements.
+## Supported Providers
+ - **cdnjs**: Fetches library packages from the cdnjs CDN.
+ - **jsdelivr**: Fetches library packages from the jsDelivr CDN.
+ - **unpkg**: Fetches library packages from the unpkg CDN.
+ - **skypack**: Fetches library packages from the skypack CDN.
+ - **esm**: Fetches library packages from the esm.sh CDN.
+ - **Raw**: Fetches files from a custom URL.
 
-## Getting Started
-### Installation
+## Features
+ - **Flexible Provider Interface**: Easily extendable to support multiple CDNs.
+ - **Automatic Caching**: Downloads and caches library files to boost performance.
+ - **Import Map Generation**: Automatically produces standards-compliant import maps.
+ - **Customizable Directories**: Configure cache and asset directories to suit your project.
+ - **Raw Imports**:Directly specify a URL to bypass the default provider.
 
-To use ImportMap in your Go project, install it as a module:
+
+## Installation
+
+Install via Go modules:
 
 ```bash
 go get github.com/donseba/go-importmap
 ```
-###  Usage Example
+###  Quick Example
 
 Here's a quick example to get you started with ImportMap:
 
@@ -26,69 +33,52 @@ Here's a quick example to get you started with ImportMap:
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "log/slog"
+	"context"
+	"fmt"
+	"log"
 
-    "github.com/donseba/go-importmap"
-    "github.com/donseba/go-importmap/library"
+	"github.com/donseba/go-importmap"
+	"github.com/donseba/go-importmap/library"
 )
 
 func main() {
-    ctx := context.TODO()
+	ctx := context.TODO()
 
-    im := importmap.
-        NewDefaults().
-        WithLogger(slog.Default()).
-        ShimPath("https://ga.jspm.io/npm:es-module-shims@1.7.0")
+	im := importmap.
+		NewDefaults().
+		WithPackages([]library.Package{
+			{
+				Name:    "htmx",
+				Version: "1.9.10",
+				Require: []library.Include{
+					{ File: "htmx.min.js" },
+					{ File: "/ext/json-enc.js", As: "json-enc" },
+				},
+			},
+			{
+				Name: "bootstrap",
+				Require: []library.Include{
+					{ File: "css/bootstrap.min.css" },
+					{ File: "js/bootstrap.min.js", As: "bootstrap" },
+				},
+			},
+		})
 
-    im.WithPackages([]library.Package{
-        {
-            Name:    "htmx",
-            Version: "1.8.5", // locking a specific version
-            Require: []library.Include{
-                {
-                    File: "htmx.min.js",
-                },
-                {
-                    File: "/ext/json-enc.js",
-                    As:   "json-enc",
-                },
-            },
-        },
-        {
-            Name: "bootstrap",
-            Require: []library.Include{
-                {
-                    File: "css/bootstrap.min.css",
-                    As:   "bootstrap",
-                },
-                {
-                    File: "js/bootstrap.min.js",
-                    As:   "bootstrap",
-                },
-            },
-        },
-    })
+	if err := im.Fetch(ctx); err != nil {
+		log.Fatal(err)
+	}
 
-    // retrieve all libraries
-    err := im.Fetch(ctx)
-    if err != nil {
-        log.Fatal(err)
-        return
-    }
+	tmpl, err := im.Render()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // render the html block including script tags.
-    tmpl, err := im.Render()
-    if err != nil {
-        log.Fatal(err)
-        return
-    }
-
-    fmt.Println(tmpl)
+	fmt.Println(tmpl)
 }
 ```
+This code initializes ImportMap with default settings, fetches the specified libraries from your chosen provider, and generates an HTML snippet containing the necessary script and link tags.
+
+
 Resulting in the following output:
 ```html
 <link rel="stylesheet" href="/assets/css/bootstrap.min.css" as="bootstrap"/>
@@ -111,75 +101,32 @@ Finally, it renders the HTML block with the necessary script tags for the librar
 
 ImportMap offers several methods to customize its behavior according to your project's needs:
 
- - **WithDefaults()**: Initializes ImportMap with default settings for cache and assets directories, and the ES module shim.
- - **WithProvider(provider Provider)**: Sets a custom provider for fetching library files.
- - **WithPackages(packages []library.Package)**: Sets multiple library packages to the import map.
+ - **WithDefaults()**: Initialize with sensible defaults for cache and asset directories.
+ - **WithProvider(provider Provider)**: Set a custom provider for fetching library files.
+ - **WithPackages(packages []library.Package)**: Add one or more library packages.
  - **WithPackage(package library.Package)**: Adds a single library package to the import map.
  - **AssetsDir(dir string)**: Sets the directory path for assets, default is `assets`.
  - **CacheDir(dir string)**: Sets the directory path for the cache, default is `.importmap`.
  - **RootDir(dir string)**: Sets the directory paths for assets, cache, and root directories, respectively.
- - **ShimPath(sp string)**: Sets the path to the ES module shim, default is `https://ga.jspm.io/npm:es-module-shims@1.7.0/dist/es-module-shims.js`.
-
-
-## file structure
-
-```
-- .importmap
-  - bootstrap
-    - 5.1.3
-      - css
-        - bootstrap.css
-        - bootstrap.min.css
-        - bootstrap-grid.css
-        - bootstrap-grid.min.css
-      - js
-        - bootstrap.js
-        - bootstrap.bundle.js 
-        - bootstrap.min.js
-  - htmx
-    - 1.8.5
-        - htmx.min.js
-        - ext
-          - json-enc.js
-          - ajax-header.js
-          - apline-morphd.js
-          - ... etc
-- assets
-    - bootstrap
-      -5.1.3
-        - css
-          - bootstrap.min.css
-        - js
-          - bootstrap.min.js
-    - htmx
-        - 1.8.5
-            - htmx.min.js
-            - ext
-        - json-enc.js
-```
-
-As you can see the `.importmap` contains all the files fetched from the cdnjs, while the `assets` contains the files that are used in the importmap.
+ - **ShimPath(sp string)**:Specify the ES module shim URL.
 
 ## RAW Imports
 
-it is possible to bypass the cdnjs by using the `Raw` param on the package.
+it is possible to bypass the cdnjs by using the using the Raw provider:
 
 ```go
+pr := cdnjs.New()
+im := New().WithProvider(pr).WithLogger(slog.Default())
+
 im.WithPackages([]library.Package{
     {
-        Name:    "htmx",
-        Version: "1.8.6",
-        Require: []library.Include{
-        {
-            Raw: "https://unpkg.com/browse/htmx.org@1.8.6/dist/htmx.min.js",
-            As:  "htmx",
-        },
-        },
+        Name:     "htmx",
+        Version:  "2.0.4",
+        Provider: raw.New("https://unpkg.com/browse/htmx.org@2.0.4/dist/htmx.min.js"),
     },
 })
 ```
-
-This wil generate:
+results in generating:
 ```json
     {"imports":{"htmx":"https://unpkg.com/browse/htmx.org@1.8.6/dist/htmx.min.js"}}
 ```

@@ -3,10 +3,10 @@ package cdnjs
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"github.com/donseba/go-importmap/library"
 	"net/http"
+
+	"github.com/donseba/go-importmap/library"
 )
 
 var (
@@ -57,7 +57,7 @@ func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (l
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, "", errors.New(fmt.Sprintf("client api responded with code %d", resp.StatusCode))
+		return nil, "", fmt.Errorf("client api responded with code %d", resp.StatusCode)
 	}
 
 	var sr SearchResponse

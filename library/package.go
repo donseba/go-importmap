@@ -1,6 +1,7 @@
 package library
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +12,10 @@ import (
 	"regexp"
 	"strings"
 )
+
+type Provider interface {
+	FetchPackageFiles(ctx context.Context, name, version string) (Files, string, error)
+}
 
 type Includes []Include
 
@@ -61,9 +66,10 @@ func (I Include) Name() string {
 }
 
 type Package struct {
-	Name    string
-	Version string
-	Require Includes // Patterns to specify which files to include
+	Name     string
+	Version  string
+	Provider Provider
+	Require  Includes // Patterns to specify which files to include
 }
 
 // CacheDir returns the cache dir for the current package, we will store all files in here

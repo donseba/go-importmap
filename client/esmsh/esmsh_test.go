@@ -1,4 +1,4 @@
-package jsdelivr
+package esmsh
 
 import (
 	"encoding/json"

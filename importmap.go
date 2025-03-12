@@ -4,27 +4,24 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/donseba/go-importmap/client/cdnjs"
-	"github.com/donseba/go-importmap/library"
 	"html/template"
 	"log/slog"
 	"os"
 	"path"
+
+	"github.com/donseba/go-importmap/client/cdnjs"
+	"github.com/donseba/go-importmap/library"
 )
 
 var (
 	defaultAssetsDir = "assets"
 	defaultCacheDir  = ".importmap"
-	defaultShimSrc   = "https://ga.jspm.io/npm:es-module-shims@1.7.0/dist/es-module-shims.js"
+	defaultShimSrc   = "https://ga.jspm.io/npm:es-module-shims@2.0.10/dist/es-module-shims.js"
 )
 
 type (
-	Provider interface {
-		FetchPackageFiles(ctx context.Context, name, version string) (library.Files, string, error)
-	}
-
 	ImportMap struct {
-		provider  Provider          // the js library provider
+		provider  library.Provider  // the js library provider
 		packages  []library.Package // the library packages we want to include
 		Structure structure         // the output structure
 
@@ -66,7 +63,7 @@ func (im *ImportMap) WithDefaults() *ImportMap {
 	return im
 }
 
-func (im *ImportMap) WithProvider(p Provider) *ImportMap {
+func (im *ImportMap) WithProvider(p library.Provider) *ImportMap {
 	im.provider = p
 	return im
 }
@@ -131,7 +128,15 @@ func (im *ImportMap) Fetch(ctx context.Context) error {
 		if im.logger != nil {
 			im.logger.InfoContext(ctx, "fetching assets", "package", pkg.Name)
 		}
-		allFiles, version, err := im.provider.FetchPackageFiles(ctx, pkg.Name, pkg.Version)
+
+		var provider library.Provider
+		if pkg.Provider != nil {
+			provider = pkg.Provider
+		} else {
+			provider = im.provider
+		}
+
+		allFiles, version, err := provider.FetchPackageFiles(ctx, pkg.Name, pkg.Version)
 		if err != nil {
 			return err
 		}
