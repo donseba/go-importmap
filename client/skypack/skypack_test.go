@@ -1,4 +1,4 @@
-package jsdelivr
+package skypack
 
 import (
 	"encoding/json"
@@ -8,14 +8,14 @@ import (
 func TestNew(t *testing.T) {
 	cdn := New()
 
-	f, v, err := cdn.FetchPackageFiles(t.Context(), "bootstrap", "5.3.3")
+	f, v, err := cdn.FetchPackageFiles(t.Context(), "bootstrap", "5.1.3")
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	if v != "5.3.3" {
-		t.Error("version mismatch")
+	if v != "5.1.3" {
+		t.Errorf("version mismatch want 5.1.3 got %s", v)
 	}
 
 	if len(f) == 0 {

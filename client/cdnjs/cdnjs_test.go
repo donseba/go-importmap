@@ -1,13 +1,11 @@
 package cdnjs
 
 import (
-	"context"
 	"fmt"
 	"testing"
 )
 
 func TestClient_Search(t *testing.T) {
-	ctx := context.TODO()
 	cs := New()
 
 	var tests = []struct {
@@ -23,7 +21,7 @@ func TestClient_Search(t *testing.T) {
 	for _, tt := range tests {
 		testName := fmt.Sprintf("%s,%s,%s", tt.name, tt.version, tt.filename)
 		t.Run(testName, func(t *testing.T) {
-			p, _, err := cs.FetchPackageFiles(ctx, tt.name, tt.version)
+			p, _, err := cs.FetchPackageFiles(t.Context(), tt.name, tt.version)
 			if err != nil {
 				t.Error(err)
 			}

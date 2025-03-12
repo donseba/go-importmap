@@ -1,4 +1,4 @@
-package jsdelivr
+package unpkg
 
 import (
 	"encoding/json"

@@ -1,4 +1,4 @@
-package jsdelivr
+package raw
 
 import (
 	"encoding/json"
@@ -6,15 +6,15 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	cdn := New()
+	cdn := New("https://unpkg.com/browse/htmx.org@1.9.10/dist/htmx.min.js")
 
-	f, v, err := cdn.FetchPackageFiles(t.Context(), "bootstrap", "5.3.3")
+	f, v, err := cdn.FetchPackageFiles(t.Context(), "htmx.org", "1.9.10")
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	if v != "5.3.3" {
+	if v != "1.9.10" {
 		t.Error("version mismatch")
 	}
 
