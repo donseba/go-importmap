@@ -30,3 +30,20 @@ func TestNew(t *testing.T) {
 
 	t.Log(string(out))
 }
+
+func TestIncludeMinified(t *testing.T) {
+	cdn := New()
+
+	f, _, err := cdn.FetchPackageFiles(t.Context(), "@hotwired/turbo", "8.0.13")
+
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if len(f) != 4 {
+		t.Error("files count mismatch")
+	}
+
+	t.Log(f)
+}
