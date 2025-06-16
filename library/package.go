@@ -137,6 +137,51 @@ func (p *Package) HasAssets(rootDir string, assetsDir string) bool {
 	return true
 }
 
+func (p *Package) Assets(assetsDir string, filePath string) (Files, string, error) {
+	// If filePath is empty, list all files in the package's asset directory
+	baseDir := p.AssetsDir(assetsDir)
+	var fullPath string
+	if filePath == "" {
+		fullPath = path.Join(baseDir)
+	} else {
+		// Remove leading slash if present
+		filePath = strings.TrimPrefix(filePath, "/")
+		fullPath = path.Join(baseDir, filePath)
+	}
+
+	if _, err := os.Stat(fullPath); errors.Is(err, os.ErrNotExist) {
+		return nil, "", fmt.Errorf("asset file %s does not exist", fullPath)
+	}
+
+	files, err := os.ReadDir(fullPath)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to read assets directory %s: %w", fullPath, err)
+	}
+
+	var assetFiles Files
+	for _, file := range files {
+		if file.IsDir() {
+			continue // Skip directories
+		}
+
+		assetPath := path.Join(baseDir, filePath, file.Name())
+		localPath := path.Join(filePath, file.Name())
+
+		// Ensure assetPath has a leading slash for URL usage
+		if !strings.HasPrefix(assetPath, "/") {
+			assetPath = "/" + assetPath
+		}
+
+		assetFiles = append(assetFiles, File{
+			Path:      assetPath,
+			LocalPath: localPath,
+			Type:      ExtractFileType(file.Name()),
+		})
+	}
+
+	return assetFiles, baseDir, nil
+}
+
 func (p *Package) HasAssetFile(rootDir string, assetsDir string, filePath string) bool {
 	fullPath := path.Join(rootDir, p.AssetsDir(assetsDir), filePath)
 

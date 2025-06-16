@@ -3,6 +3,7 @@ package importmap
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"log/slog"
@@ -121,6 +122,82 @@ func (im *ImportMap) Shim() string {
 func (im *ImportMap) ShimPath(sp string) *ImportMap {
 	im.shim = sp
 	return im
+}
+
+func (im *ImportMap) CacheOrFetch(ctx context.Context) error {
+	if im.logger != nil {
+		im.logger.InfoContext(ctx, "checking cache and assets for packages")
+	}
+
+	if im.cacheDir == nil || im.assetsDir == nil {
+		return errors.New("cacheDir and assetsDir must be set")
+	}
+
+	for _, pkg := range im.packages {
+		if im.logger != nil {
+			im.logger.InfoContext(ctx, "checking package cache and assets", "package", pkg.Name)
+		}
+
+		cacheExists := pkg.HasCache(im.rootDir, *im.cacheDir)
+		assetsExist := pkg.HasAssets(im.rootDir, *im.assetsDir)
+
+		if !cacheExists {
+			if im.logger != nil {
+				im.logger.InfoContext(ctx, "cache not found, fetching", "package", pkg.Name)
+			}
+			// Fetch will build cache and assets
+			err := im.Fetch(ctx)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		if !assetsExist {
+			if im.logger != nil {
+				im.logger.InfoContext(ctx, "assets not found, building from cache", "package", pkg.Name)
+			}
+			// Build assets from cache
+			allFiles, _, err := pkg.Assets(*im.cacheDir, "")
+			if err != nil {
+				if im.logger != nil {
+					im.logger.ErrorContext(ctx, "error reading cache for assets", "package", pkg.Name, "error", err)
+				}
+				return err
+			}
+			for _, file := range allFiles {
+				if !pkg.HasAssetFile(im.rootDir, *im.assetsDir, file.LocalPath) {
+					err = pkg.MakeAssets(im.rootDir, *im.cacheDir, *im.assetsDir, file.LocalPath, file.Path)
+					if err != nil {
+						return err
+					}
+				}
+			}
+		}
+
+		// Always update Structure.Imports with asset paths
+		allFiles, _, err := pkg.Assets(*im.assetsDir, "")
+		if err != nil {
+			if im.logger != nil {
+				im.logger.ErrorContext(ctx, "error reading assets", "package", pkg.Name, "error", err)
+			}
+			return err
+		}
+		for _, file := range allFiles {
+			var as string
+			if len(pkg.Require) > 0 {
+				req := pkg.Require.Get(file.LocalPath)
+				if req == nil {
+					continue
+				}
+				as = req.Name()
+			} else {
+				as = file.LocalPath
+			}
+			im.Structure.Imports[as] = file.Path
+		}
+	}
+	return nil
 }
 
 func (im *ImportMap) Fetch(ctx context.Context) error {
