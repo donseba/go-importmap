@@ -158,7 +158,7 @@ func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (l
 		esmFile := library.File{
 			Type:      library.FileTypeJS,
 			Path:      esmBasePath,
-			LocalPath: "/esm-bundle.js", // Simple filename without special characters
+			LocalPath: "esm-bundle.js", // Simple filename without special characters
 		}
 
 		// Filter out JavaScript files, keeping only CSS and other files
