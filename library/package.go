@@ -153,30 +153,46 @@ func (p *Package) Assets(assetsDir string, filePath string) (Files, string, erro
 		return nil, "", fmt.Errorf("asset file %s does not exist", fullPath)
 	}
 
+	// Use a recursive helper function to traverse directories
+	return p.getFilesRecursively(fullPath, baseDir, filePath)
+}
+
+// getFilesRecursively will scan a directory and all its subdirectories for files
+func (p *Package) getFilesRecursively(fullPath, baseDir, relativePath string) (Files, string, error) {
 	files, err := os.ReadDir(fullPath)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to read assets directory %s: %w", fullPath, err)
+		return nil, "", fmt.Errorf("failed to read directory %s: %w", fullPath, err)
 	}
 
 	var assetFiles Files
 	for _, file := range files {
+		// Create the current file/directory path
+		currentRelativePath := path.Join(relativePath, file.Name())
+		currentFullPath := path.Join(fullPath, file.Name())
+
 		if file.IsDir() {
-			continue // Skip directories
+			// Recursively process subdirectory
+			subFiles, _, err := p.getFilesRecursively(currentFullPath, baseDir, currentRelativePath)
+			if err != nil {
+				return nil, "", err
+			}
+			// Add files from subdirectory to our list
+			assetFiles = append(assetFiles, subFiles...)
+		} else {
+			// It's a file, add it to our list
+			assetPath := path.Join(baseDir, currentRelativePath)
+
+			// Ensure assetPath has a leading slash for URL usage
+			if !strings.HasPrefix(assetPath, "/") {
+				assetPath = "/" + assetPath
+			}
+
+			assetFiles = append(assetFiles, File{
+				Path:      assetPath,
+				LocalPath: currentRelativePath,
+				Type:      ExtractFileType(file.Name()),
+			})
 		}
-
-		assetPath := path.Join(baseDir, filePath, file.Name())
-		localPath := path.Join(filePath, file.Name())
-
-		// Ensure assetPath has a leading slash for URL usage
-		if !strings.HasPrefix(assetPath, "/") {
-			assetPath = "/" + assetPath
-		}
-
-		assetFiles = append(assetFiles, File{
-			Path:      assetPath,
-			LocalPath: localPath,
-			Type:      ExtractFileType(file.Name()),
-		})
 	}
 
 	return assetFiles, baseDir, nil

@@ -194,7 +194,13 @@ func (im *ImportMap) CacheOrFetch(ctx context.Context) error {
 			} else {
 				as = file.LocalPath
 			}
-			im.Structure.Imports[as] = file.Path
+
+			switch file.Type {
+			case library.FileTypeCSS:
+				im.Structure.Styles[as] = file.Path
+			case library.FileTypeJS:
+				im.Structure.Imports[as] = file.Path
+			}
 		}
 	}
 	return nil
