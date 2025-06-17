@@ -19,6 +19,7 @@ type (
 	Client struct {
 		apiBaseURL string
 		cdnBaseURL string
+		esm        bool
 	}
 
 	SearchResponse struct {
@@ -58,9 +59,26 @@ func New() *Client {
 	return &Client{
 		apiBaseURL: defaultApiBaseURL,
 		cdnBaseURL: defaultCdnBaseURL,
+		esm:        false,
 	}
 }
 
+// NewESM returns a new Client with ESM mode enabled
+func NewESM() *Client {
+	return &Client{
+		apiBaseURL: defaultApiBaseURL,
+		cdnBaseURL: defaultCdnBaseURL,
+		esm:        true,
+	}
+}
+
+// SetESM sets whether the client should use ESM mode
+func (c *Client) SetESM(useESM bool) *Client {
+	c.esm = useESM
+	return c
+}
+
+// FetchPackageFiles retrieves package files from jsdelivr
 func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (library.Files, string, error) {
 	url := defaultApiBaseURL + name
 
@@ -98,7 +116,7 @@ func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (l
 		}
 	}
 
-	// get all the files
+	// get all the files regardless of ESM mode - we need them for CSS and other file types
 	vUrl := fmt.Sprintf("%s%s@%s", defaultApiBaseURL, name, useVersion)
 
 	req, err = http.NewRequestWithContext(ctx, http.MethodGet, vUrl, nil)
@@ -130,6 +148,30 @@ func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (l
 	}
 
 	var files = walkFiles(pr.Files, basePath, "", hasDist)
+
+	// If ESM mode is enabled, we'll replace JS files with the ESM version
+	if c.esm {
+		// Create special ESM file with a unique LocalPath that will match any pattern
+		esmBasePath := c.cdnBaseURL + name + "@" + useVersion + "/+esm"
+
+		// Use a simpler approach - just add the ESM bundle with a standard path
+		esmFile := library.File{
+			Type:      library.FileTypeJS,
+			Path:      esmBasePath,
+			LocalPath: "/esm-bundle.js", // Simple filename without special characters
+		}
+
+		// Filter out JavaScript files, keeping only CSS and other files
+		var nonJSFiles library.Files
+		for _, file := range files {
+			if file.Type != library.FileTypeJS {
+				nonJSFiles = append(nonJSFiles, file)
+			}
+		}
+
+		// Combine the ESM file with non-JS files
+		files = append(library.Files{esmFile}, nonJSFiles...)
+	}
 
 	return files, useVersion, nil
 }

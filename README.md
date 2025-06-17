@@ -131,6 +131,33 @@ results in generating:
     {"imports":{"htmx":"https://unpkg.com/browse/htmx.org@1.8.6/dist/htmx.min.js"}}
 ```
 
+### jsdelivr ESM imports can be fetched using the jsdelivr provider:
+
+```go
+  im := importmap.
+    NewDefaults().
+    WithProvider(cdnjs.New()).
+    AssetsDir(path.Join("assets")).
+    WithPackages([]library.Package{
+    {
+      Name:    "htmx",
+      Version: "2.0.4",
+      Require: []library.Include{
+        {File: "htmx.esm.min.js"},
+        {File: "/ext/json-enc.js", As: "json-enc"},
+	  },
+	},{
+      Provider: jsdelivr.NewESM(), // <!-- Use jsdelivr ESM provider -->
+      Name:     "@simonwep/pickr",
+      Version:  "1.9.1",
+      Require: []library.Include{
+        {File: "/esm-bundle.js", As: "pickr"}, // <!-- Get the ESM bundle -->
+        {File: "/dist/themes/nano.min.css", As: "nano.min.css"},
+	  },
+	},
+  })
+```
+
 ## Contributing
 
 Contributions are welcome!
