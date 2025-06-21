@@ -1,6 +1,9 @@
 package library
 
-import "path/filepath"
+import (
+	"path/filepath"
+	"regexp"
+)
 
 const (
 	// FileTypeJS represents a JavaScript file
@@ -30,4 +33,17 @@ func ExtractFileType(filename string) FileType {
 	default:
 		return FileTypeOther
 	}
+}
+
+func FileNameMin(filename string) string {
+	jsRe := regexp.MustCompile(`\.js$`)
+	cssRe := regexp.MustCompile(`\.css$`)
+	if ExtractFileType(filename) == FileTypeJS {
+		filename = jsRe.ReplaceAllString(filename, ".min.js")
+	}
+	if ExtractFileType(filename) == FileTypeCSS {
+		filename = cssRe.ReplaceAllString(filename, ".min.css")
+	}
+
+	return filename
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/donseba/go-importmap/library"
@@ -178,6 +179,8 @@ func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (l
 
 func walkFiles(files Files, basePath string, filePath string, dist bool) library.Files {
 	var f library.Files
+	cssJsRe := regexp.MustCompile(`(\.js$|\.css$)`)
+	minRe := regexp.MustCompile(`(\.min\.js$|\.min\.css$)`)
 	for _, file := range files {
 		if file.Type == "directory" {
 			if dist && file.Name == "dist" {
@@ -194,6 +197,15 @@ func walkFiles(files Files, basePath string, filePath string, dist bool) library
 			Path:      basePath + filePath + file.Name,
 			LocalPath: filePath + file.Name,
 		})
+		if cssJsRe.Match([]byte(file.Name)) {
+			if !minRe.Match([]byte(file.Name)) {
+				f = append(f, library.File{
+					Type:      library.ExtractFileType(file.Name),
+					Path:      basePath + filePath + library.FileNameMin(file.Name),
+					LocalPath: filePath + library.FileNameMin(file.Name),
+				})
+			}
+		}
 	}
 
 	return f
