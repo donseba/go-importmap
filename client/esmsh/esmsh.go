@@ -2,11 +2,13 @@ package esmsh
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/donseba/go-importmap/library"
 )
@@ -39,7 +41,7 @@ func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (l
 		pkgID = name
 	}
 
-	// esm.sh meta endpoint returns a JavaScript snippet
+	// esm.sh meta endpoint returns package metadata.
 	metaURL := fmt.Sprintf("%s%s?meta", c.apiBaseURL, pkgID)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, metaURL, nil)
 	if err != nil {
@@ -61,8 +63,20 @@ func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (l
 		return nil, "", err
 	}
 	text := string(body)
+	var metadata struct {
+		Version string `json:"version"`
+		Module  string `json:"module"`
+	}
+	if json.Unmarshal(body, &metadata) == nil && metadata.Version != "" && strings.HasPrefix(metadata.Module, "/") {
+		fileURL := strings.TrimRight(c.apiBaseURL, "/") + metadata.Module
+		return library.Files{{
+			Type:      library.ExtractFileType(fileURL),
+			Path:      fileURL,
+			LocalPath: strings.TrimPrefix(metadata.Module, "/"),
+		}}, metadata.Version, nil
+	}
 
-	// Extract version from the leading comment.
+	// Older responses used a JavaScript snippet. Extract version from its leading comment.
 	// Expected format: "/* esm.sh - bootstrap@5.3.3 */"
 	reVersion := regexp.MustCompile(`/\*\s*esm\.sh\s*-\s*` + regexp.QuoteMeta(name) + `@([^\s*]+)`)
 	matches := reVersion.FindStringSubmatch(text)

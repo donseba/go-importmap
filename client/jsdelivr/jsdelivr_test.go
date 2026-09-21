@@ -1,34 +1,33 @@
 package jsdelivr
 
 import (
-	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
-func TestNew(t *testing.T) {
-	cdn := New()
+func TestFetchPackageFiles(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/bootstrap":
+			_, _ = w.Write([]byte(`{"tags":{"latest":"5.3.4"},"versions":["5.3.3","5.3.4"]}`))
+		case "/bootstrap@5.3.3":
+			_, _ = w.Write([]byte(`{"name":"bootstrap","version":"5.3.3","files":[{"type":"directory","name":"dist","files":[{"type":"file","name":"bootstrap.min.js"}]}]}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	client := New()
+	client.apiBaseURL = server.URL + "/"
 
-	f, v, err := cdn.FetchPackageFiles(t.Context(), "bootstrap", "5.3.3")
+	files, version, err := client.FetchPackageFiles(t.Context(), "bootstrap", "5.3.3")
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
-
-	if v != "5.3.3" {
-		t.Error("version mismatch")
+	if version != "5.3.3" || len(files) != 1 || files[0].LocalPath != "dist/bootstrap.min.js" {
+		t.Fatalf("unexpected version or files: %q, %#v", version, files)
 	}
-
-	if len(f) == 0 {
-		t.Error("no files found")
-	}
-
-	out, err := json.MarshalIndent(f, "", "  ")
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	t.Log(string(out))
 }
 
 func TestIncludeMinified(t *testing.T) {

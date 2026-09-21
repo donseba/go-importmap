@@ -81,7 +81,15 @@ func (c *Client) SetESM(useESM bool) *Client {
 
 // FetchPackageFiles retrieves package files from jsdelivr
 func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (library.Files, string, error) {
-	url := defaultApiBaseURL + name
+	apiBaseURL := c.apiBaseURL
+	if apiBaseURL == "" {
+		apiBaseURL = defaultApiBaseURL
+	}
+	cdnBaseURL := c.cdnBaseURL
+	if cdnBaseURL == "" {
+		cdnBaseURL = defaultCdnBaseURL
+	}
+	url := apiBaseURL + name
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -118,7 +126,7 @@ func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (l
 	}
 
 	// get all the files regardless of ESM mode - we need them for CSS and other file types
-	vUrl := fmt.Sprintf("%s%s@%s", defaultApiBaseURL, name, useVersion)
+	vUrl := fmt.Sprintf("%s%s@%s", apiBaseURL, name, useVersion)
 
 	req, err = http.NewRequestWithContext(ctx, http.MethodGet, vUrl, nil)
 	if err != nil {
@@ -141,7 +149,7 @@ func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (l
 		return nil, "", err
 	}
 
-	basePath := c.cdnBaseURL + name + "@" + useVersion + "/"
+	basePath := cdnBaseURL + name + "@" + useVersion + "/"
 
 	var hasDist bool
 	if strings.Contains(pr.Default, "dist") {
@@ -153,7 +161,7 @@ func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (l
 	// If ESM mode is enabled, we'll replace JS files with the ESM version
 	if c.esm {
 		// Create special ESM file with a unique LocalPath that will match any pattern
-		esmBasePath := c.cdnBaseURL + name + "@" + useVersion + "/+esm"
+		esmBasePath := cdnBaseURL + name + "@" + useVersion + "/+esm"
 
 		// Use a simpler approach - just add the ESM bundle with a standard path
 		esmFile := library.File{

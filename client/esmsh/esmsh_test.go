@@ -1,32 +1,46 @@
 package esmsh
 
 import (
-	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
-func TestNew(t *testing.T) {
-	cdn := New()
+func TestFetchPackageFilesJSONMetadata(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/bootstrap@5.3.3" || !r.URL.Query().Has("meta") {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte(`{"name":"bootstrap","version":"5.3.3","module":"/bootstrap@5.3.3/es2022/bootstrap.mjs"}`))
+	}))
+	defer server.Close()
+	client := New()
+	client.apiBaseURL = server.URL + "/"
 
-	f, v, err := cdn.FetchPackageFiles(t.Context(), "bootstrap", "5.3.3")
+	files, version, err := client.FetchPackageFiles(t.Context(), "bootstrap", "5.3.3")
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
-
-	if v != "5.3.3" {
-		t.Error("version mismatch")
+	if version != "5.3.3" || len(files) != 1 || files[0].Path != server.URL+"/bootstrap@5.3.3/es2022/bootstrap.mjs" ||
+		files[0].LocalPath != "bootstrap@5.3.3/es2022/bootstrap.mjs" {
+		t.Fatalf("unexpected metadata: %q, %#v", version, files)
 	}
+}
 
-	if len(f) == 0 {
-		t.Error("no files found")
-	}
+func TestFetchPackageFilesLegacyMetadata(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("/* esm.sh - bootstrap@5.3.3 */\nexport * from \"/bootstrap@5.3.3/es2022/bootstrap.mjs\";"))
+	}))
+	defer server.Close()
+	client := New()
+	client.apiBaseURL = server.URL + "/"
 
-	out, err := json.MarshalIndent(f, "", "  ")
+	files, version, err := client.FetchPackageFiles(t.Context(), "bootstrap", "5.3.3")
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
-
-	t.Log(string(out))
+	if version != "5.3.3" || len(files) != 1 || files[0].Path != server.URL+"/bootstrap@5.3.3/es2022/bootstrap.mjs" {
+		t.Fatalf("unexpected metadata: %q, %#v", version, files)
+	}
 }
