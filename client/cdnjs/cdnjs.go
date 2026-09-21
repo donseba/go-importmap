@@ -27,6 +27,7 @@ type (
 		Version  string   `json:"version"`
 		Versions []string `json:"versions"`
 		Assets   []Assets `json:"assets"`
+		Files    []string `json:"files"`
 	}
 
 	Assets struct {
@@ -43,7 +44,18 @@ func New() *Client {
 }
 
 func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (library.Files, string, error) {
-	url := defaultApiBaseURL + name
+	apiBaseURL := c.apiBaseURL
+	if apiBaseURL == "" {
+		apiBaseURL = defaultApiBaseURL
+	}
+	cdnBaseURL := c.cdnBaseURL
+	if cdnBaseURL == "" {
+		cdnBaseURL = defaultCdnBaseURL
+	}
+	url := apiBaseURL + name
+	if version != "" {
+		url += "/" + version
+	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -66,31 +78,25 @@ func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (l
 		return nil, "", err
 	}
 
-	var (
-		useVersion = sr.Version
-	)
-
-	if version != "" && version != useVersion {
-		for _, v := range sr.Versions {
-			if version == v {
-				useVersion = v
-				break
-			}
-		}
+	useVersion := sr.Version
+	if version != "" && useVersion != version {
+		return nil, "", fmt.Errorf("cdnjs returned version %q for requested version %q", useVersion, version)
 	}
 
-	basePath := c.cdnBaseURL + name + "/" + useVersion + "/"
+	basePath := cdnBaseURL + name + "/" + useVersion + "/"
 
 	var files library.Files
 
-	for _, assets := range sr.Assets {
-		for _, v := range assets.Files {
-			files = append(files, library.File{
-				Type:      library.ExtractFileType(v),
-				Path:      basePath + v,
-				LocalPath: v,
-			})
-		}
+	fileNames := sr.Files
+	if version == "" && len(sr.Assets) > 0 {
+		fileNames = sr.Assets[0].Files
+	}
+	for _, v := range fileNames {
+		files = append(files, library.File{
+			Type:      library.ExtractFileType(v),
+			Path:      basePath + v,
+			LocalPath: v,
+		})
 	}
 
 	if len(files) == 0 && sr.Filename != "" {

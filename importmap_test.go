@@ -1,17 +1,49 @@
 package importmap
 
 import (
+	"context"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
-	"github.com/donseba/go-importmap/client/cdnjs"
-	"github.com/donseba/go-importmap/client/jsdelivr"
 	"github.com/donseba/go-importmap/client/raw"
 	"github.com/donseba/go-importmap/library"
 )
 
+type fixtureProvider struct {
+	baseURL string
+	paths   map[string][]string
+}
+
+func (p fixtureProvider) FetchPackageFiles(_ context.Context, name, version string) (library.Files, string, error) {
+	var files library.Files
+	for _, localPath := range p.paths[name] {
+		files = append(files, library.File{
+			Type:      library.ExtractFileType(localPath),
+			Path:      p.baseURL + "/" + name + "/" + localPath,
+			LocalPath: localPath,
+		})
+	}
+	return files, version, nil
+}
+
+func assetServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("fixture"))
+	}))
+	t.Cleanup(server.Close)
+	return server
+}
+
 func TestImportMapWithLocalAssets(t *testing.T) {
-	pr := cdnjs.New()
+	t.Chdir(t.TempDir())
+	server := assetServer(t)
+	pr := fixtureProvider{baseURL: server.URL, paths: map[string][]string{
+		"htmx":      {"htmx.min.js", "ext/json-enc.js"},
+		"bootstrap": {"css/bootstrap.min.css", "js/bootstrap.min.js"},
+	}}
 
 	im := New().
 		WithDefaults().
@@ -97,7 +129,12 @@ func TestImportMapWithLocalAssets(t *testing.T) {
 }
 
 func TestImportMapWithLocalAssetsJsDeliver(t *testing.T) {
-	pr := jsdelivr.New()
+	t.Chdir(t.TempDir())
+	server := assetServer(t)
+	pr := fixtureProvider{baseURL: server.URL, paths: map[string][]string{
+		"htmx.org":  {"dist/htmx.min.js", "dist/ext/json-enc.js"},
+		"bootstrap": {"dist/css/bootstrap.min.css", "dist/js/bootstrap.min.js"},
+	}}
 
 	im := New().
 		WithDefaults().
@@ -183,7 +220,7 @@ func TestImportMapWithLocalAssetsJsDeliver(t *testing.T) {
 }
 
 func TestImportRaw(t *testing.T) {
-	pr := cdnjs.New()
+	pr := fixtureProvider{paths: map[string][]string{}}
 	im := New().WithProvider(pr).WithLogger(slog.Default())
 
 	im.WithPackages([]library.Package{
@@ -218,7 +255,7 @@ func TestImportRaw(t *testing.T) {
 }
 
 func TestImportRawClient(t *testing.T) {
-	pr := cdnjs.New()
+	pr := fixtureProvider{paths: map[string][]string{}}
 	im := New().WithProvider(pr).WithLogger(slog.Default())
 
 	im.WithPackages([]library.Package{

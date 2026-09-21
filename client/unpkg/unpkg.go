@@ -11,12 +11,17 @@ import (
 )
 
 var (
-	defaultApiBaseURL = "https://unpkg.com/%s@%s/?meta" // Package name + version
-	defaultCdnBaseURL = "https://unpkg.com/%s@%s/"      // Base CDN URL
+	defaultApiBaseURL      = "https://unpkg.com/%s@%s/?meta" // Package name + version
+	defaultCdnBaseURL      = "https://unpkg.com/%s@%s/"      // Base CDN URL
+	defaultRegistryBaseURL = "https://registry.npmjs.org/"
 )
 
 type (
-	Client struct{}
+	Client struct {
+		apiBaseURL      string
+		cdnBaseURL      string
+		registryBaseURL string
+	}
 
 	UnpkgMetaResponse struct {
 		Type  string             `json:"type"`
@@ -31,10 +36,22 @@ type (
 )
 
 func New() *Client {
-	return &Client{}
+	return &Client{
+		apiBaseURL:      defaultApiBaseURL,
+		cdnBaseURL:      defaultCdnBaseURL,
+		registryBaseURL: defaultRegistryBaseURL,
+	}
 }
 
 func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (library.Files, string, error) {
+	apiBaseURL := c.apiBaseURL
+	if apiBaseURL == "" {
+		apiBaseURL = defaultApiBaseURL
+	}
+	cdnBaseURL := c.cdnBaseURL
+	if cdnBaseURL == "" {
+		cdnBaseURL = defaultCdnBaseURL
+	}
 	// Resolve latest version if not specified
 	if version == "" {
 		versionResp, err := c.getLatestVersion(ctx, name)
@@ -45,7 +62,7 @@ func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (l
 	}
 
 	// Get file listing from Unpkg's meta API
-	metaUrl := fmt.Sprintf(defaultApiBaseURL, name, version)
+	metaUrl := fmt.Sprintf(apiBaseURL, name, version)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, metaUrl, nil)
 	if err != nil {
 		return nil, "", err
@@ -67,7 +84,7 @@ func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (l
 	}
 
 	// Build base CDN URL
-	basePath := fmt.Sprintf(defaultCdnBaseURL, name, version)
+	basePath := fmt.Sprintf(cdnBaseURL, name, version)
 
 	// Recursively collect all files
 	var files library.Files
@@ -108,7 +125,11 @@ func (c *Client) walkFiles(listings []UnpkgFileListing, basePath string, files *
 
 // Helper to get latest version from npm registry
 func (c *Client) getLatestVersion(ctx context.Context, name string) (string, error) {
-	registryUrl := fmt.Sprintf("https://registry.npmjs.org/%s", name)
+	registryBaseURL := c.registryBaseURL
+	if registryBaseURL == "" {
+		registryBaseURL = defaultRegistryBaseURL
+	}
+	registryUrl := registryBaseURL + name
 	resp, err := http.Get(registryUrl)
 	if err != nil {
 		return "", err
