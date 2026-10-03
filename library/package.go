@@ -94,31 +94,18 @@ func (p *Package) HasCache(rootDir string, cacheDir string) bool {
 
 // MakeCache retrieves the file from the remote server and stores it locally
 func (p *Package) MakeCache(rootDir string, cacheDir string, filePath string, src string) error {
-	fullPath := path.Join(rootDir, p.CacheDir(cacheDir), filePath)
+	return p.MakeCacheContext(context.Background(), rootDir, cacheDir, filePath, src)
+}
 
-	err := os.MkdirAll(filepath.Dir(fullPath), os.FileMode(0755))
-	if err != nil {
-		return err
-	}
+// MakeCacheContext downloads a cache file with cancellation and atomic writes.
+func (p *Package) MakeCacheContext(ctx context.Context, rootDir, cacheDir, filePath, src string) error {
+	return downloadFile(ctx, path.Join(rootDir, p.CacheDir(cacheDir), filePath), src)
+}
 
-	file, err := os.Create(fullPath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	resp, err := http.Get(src)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	_, err = io.Copy(file, resp.Body)
-	if err != nil {
-		return err
-	}
-
-	return nil
+// HasCacheFile reports whether one complete cache file is present.
+func (p *Package) HasCacheFile(rootDir, cacheDir, filePath string) bool {
+	info, err := os.Stat(path.Join(rootDir, p.CacheDir(cacheDir), filePath))
+	return err == nil && info.Mode().IsRegular()
 }
 
 // AssetsDir returns the assets dir for the current package, we will store all files in here
@@ -210,44 +197,64 @@ func (p *Package) HasAssetFile(rootDir string, assetsDir string, filePath string
 
 // MakeAssets copies the cache files to the asset path without the version
 func (p *Package) MakeAssets(rootDir string, cacheDir string, assetsDir string, filePath string, src string) error {
+	return p.MakeAssetsContext(context.Background(), rootDir, cacheDir, assetsDir, filePath, src)
+}
+
+// MakeAssetsContext copies a complete cache file or downloads it atomically.
+func (p *Package) MakeAssetsContext(ctx context.Context, rootDir, cacheDir, assetsDir, filePath, src string) error {
 	fullPath := path.Join(rootDir, p.AssetsDir(assetsDir), filePath)
-
-	err := os.MkdirAll(filepath.Dir(fullPath), os.FileMode(0755))
-	if err != nil {
-		return err
-	}
-
-	file, err := os.Create(fullPath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	if cacheDir != "" && p.HasCache(rootDir, cacheDir) {
+	if cacheDir != "" && p.HasCacheFile(rootDir, cacheDir, filePath) {
 		cachePath := path.Join(rootDir, p.CacheDir(cacheDir), filePath)
 		cacheFile, err := os.Open(cachePath)
 		if err != nil {
 			return err
 		}
-
-		_, err = io.Copy(file, cacheFile)
-		if err != nil {
-			return err
-		}
-
-		return nil
+		defer cacheFile.Close()
+		return writeFile(ctx, fullPath, cacheFile)
 	}
+	return downloadFile(ctx, fullPath, src)
+}
 
-	resp, err := http.Get(src)
+func downloadFile(ctx context.Context, filename, src string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, src, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return fmt.Errorf("download %s: HTTP %s", src, resp.Status)
+	}
+	return writeFile(ctx, filename, resp.Body)
+}
 
-	_, err = io.Copy(file, resp.Body)
+func writeFile(ctx context.Context, filename string, source io.Reader) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(filename), 0755); err != nil {
+		return err
+	}
+	file, err := os.CreateTemp(filepath.Dir(filename), ".importmap-*")
 	if err != nil {
 		return err
 	}
-
-	return nil
+	defer os.Remove(file.Name())
+	defer file.Close()
+	if _, err := io.Copy(file, source); err != nil {
+		return err
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := file.Chmod(0644); err != nil {
+		return err
+	}
+	if err := file.Close(); err != nil {
+		return err
+	}
+	return os.Rename(file.Name(), filename)
 }

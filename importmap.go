@@ -167,7 +167,7 @@ func (im *ImportMap) CacheOrFetch(ctx context.Context) error {
 			}
 			for _, file := range allFiles {
 				if !pkg.HasAssetFile(im.rootDir, *im.assetsDir, file.LocalPath) {
-					err = pkg.MakeAssets(im.rootDir, *im.cacheDir, *im.assetsDir, file.LocalPath, file.Path)
+					err = pkg.MakeAssetsContext(ctx, im.rootDir, *im.cacheDir, *im.assetsDir, file.LocalPath, file.Path)
 					if err != nil {
 						return err
 					}
@@ -228,15 +228,17 @@ func (im *ImportMap) Fetch(ctx context.Context) error {
 			pkg.Version = version
 		}
 
-		if im.cacheDir != nil && !pkg.HasCache(im.rootDir, *im.cacheDir) {
+		if im.cacheDir != nil {
 			if im.logger != nil {
 				im.logger.InfoContext(ctx, "building cache", "package", pkg.Name, "version", pkg.Version)
 			}
 
 			for _, file := range allFiles {
-				err = pkg.MakeCache(im.rootDir, *im.cacheDir, file.LocalPath, file.Path)
-				if err != nil {
-					return err
+				if !pkg.HasCacheFile(im.rootDir, *im.cacheDir, file.LocalPath) {
+					err = pkg.MakeCacheContext(ctx, im.rootDir, *im.cacheDir, file.LocalPath, file.Path)
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -267,7 +269,7 @@ func (im *ImportMap) Fetch(ctx context.Context) error {
 
 			if im.assetsDir != nil {
 				if !pkg.HasAssetFile(im.rootDir, *im.assetsDir, file.LocalPath) {
-					err = pkg.MakeAssets(im.rootDir, cacheDir, *im.assetsDir, file.LocalPath, file.Path)
+					err = pkg.MakeAssetsContext(ctx, im.rootDir, cacheDir, *im.assetsDir, file.LocalPath, file.Path)
 					if err != nil {
 						return err
 					}

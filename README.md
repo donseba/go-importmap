@@ -78,6 +78,11 @@ func main() {
 ```
 This code initializes ImportMap with default settings, fetches the specified libraries from your chosen provider, and generates an HTML snippet containing the necessary script and link tags.
 
+Asset downloads use the context supplied to `Fetch` or `CacheOrFetch`, reject
+unsuccessful HTTP responses, and publish files only after a complete download.
+Retrying a failed fetch fills missing cache files without downloading complete
+files again.
+
 
 Resulting in the following output:
 ```html
