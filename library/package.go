@@ -138,15 +138,30 @@ func (p *Package) HasAssets(rootDir string, assetsDir string) bool {
 }
 
 func (p *Package) Assets(assetsDir string, filePath string) (Files, string, error) {
+	return p.AssetsAt("", assetsDir, filePath)
+}
+
+// AssetsAt reads assets below rootDir while keeping browser URLs relative to
+// assetsDir. RootDir is a filesystem location, not a public URL prefix.
+func (p *Package) AssetsAt(rootDir, assetsDir, filePath string) (Files, string, error) {
+	return p.filesAt(rootDir, p.AssetsDir(assetsDir), filePath)
+}
+
+// CacheFiles reads the versioned cache with paths relative to the package.
+func (p *Package) CacheFiles(rootDir, cacheDir string) (Files, error) {
+	files, _, err := p.filesAt(rootDir, p.CacheDir(cacheDir), "")
+	return files, err
+}
+
+func (p *Package) filesAt(rootDir, baseDir, filePath string) (Files, string, error) {
 	// If filePath is empty, list all files in the package's asset directory
-	baseDir := p.AssetsDir(assetsDir)
 	var fullPath string
 	if filePath == "" {
-		fullPath = path.Join(baseDir)
+		fullPath = path.Join(rootDir, baseDir)
 	} else {
 		// Remove leading slash if present
 		filePath = strings.TrimPrefix(filePath, "/")
-		fullPath = path.Join(baseDir, filePath)
+		fullPath = path.Join(rootDir, baseDir, filePath)
 	}
 
 	if _, err := os.Stat(fullPath); errors.Is(err, os.ErrNotExist) {

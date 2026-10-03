@@ -110,6 +110,12 @@ ImportMap offers several methods to customize its behavior according to your pro
  - **RootDir(dir string)**: Sets the directory paths for assets, cache, and root directories, respectively.
  - **ShimPath(sp string)**:Specify the ES module shim URL.
 
+`RootDir` controls filesystem reads and writes. For example, with
+`RootDir("/srv/my-app")` and `AssetsDir("assets")`, downloaded assets live below
+`/srv/my-app/assets`, while generated URLs still start with `/assets/`.
+`CacheOrFetch` can read or rebuild assets from the versioned cache under that
+root without changing the working directory or contacting a provider.
+
 ## RAW Imports
 
 it is possible to bypass the cdnjs by using the using the Raw provider:
