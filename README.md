@@ -1,33 +1,24 @@
+<p align="center">
+    <a href="https://docs.gowebthings.com/go-importmap">
+        <img src="./assets/go-importmap-logo.png" alt="go-importmap" height="70">
+    </a>
+</p>
+
 # go-importmap
 
-go-importmap is a lightweight Go package for managing JavaScript and CSS dependencies. It fetches, caches, and generates import maps from popular CDNs, letting you focus on building your web applications.
+[Documentation](https://docs.gowebthings.com/go-importmap) · Part of [go-webthings](https://gowebthings.com/components).
 
-## Supported Providers
- - **cdnjs**: Fetches library packages from the cdnjs CDN.
- - **jsdelivr**: Fetches library packages from the jsDelivr CDN.
- - **unpkg**: Fetches library packages from the unpkg CDN.
- - **skypack**: Fetches library packages from the skypack CDN.
- - **esm**: Fetches library packages from the esm.sh CDN.
- - **Raw**: Fetches files from a custom URL.
-
-## Features
- - **Flexible Provider Interface**: Easily extendable to support multiple CDNs.
- - **Automatic Caching**: Downloads and caches library files to boost performance.
- - **Import Map Generation**: Automatically produces standards-compliant import maps.
- - **Customizable Directories**: Configure cache and asset directories to suit your project.
- - **Raw Imports**:Directly specify a URL to bypass the default provider.
-
+go-importmap fetches JavaScript and CSS from CDNs, caches package files locally, and generates import maps and stylesheet tags for Go templates. It handles asset preparation; your application serves the generated files and decides which modules to import.
 
 ## Installation
 
-Install via Go modules:
-
-```bash
+```sh
 go get github.com/donseba/go-importmap
 ```
-###  Quick Example
 
-Here's a quick example to get you started with ImportMap:
+## Quick start
+
+Run this during an asset build or application startup, before serving requests:
 
 ```go
 package main
@@ -36,144 +27,92 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/donseba/go-importmap"
 	"github.com/donseba/go-importmap/library"
 )
 
 func main() {
-	ctx := context.TODO()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
 
-	im := importmap.
-		NewDefaults().
+	im := importmap.NewDefaults().
 		WithPackages([]library.Package{
 			{
-				Name:    "htmx",
-				Version: "1.9.10",
+				Name: "htmx", Version: "2.0.4",
 				Require: []library.Include{
-					{ File: "htmx.min.js" },
-					{ File: "/ext/json-enc.js", As: "json-enc" },
+					{File: "htmx.esm.min.js", As: "htmx"},
 				},
 			},
 			{
-				Name: "bootstrap",
+				Name: "bootstrap", Version: "5.3.3",
 				Require: []library.Include{
-					{ File: "css/bootstrap.min.css" },
-					{ File: "js/bootstrap.min.js", As: "bootstrap" },
+					{File: "css/bootstrap.min.css", As: "bootstrap"},
 				},
 			},
 		})
-
-	if err := im.Fetch(ctx); err != nil {
+	if err := im.CacheOrFetch(ctx); err != nil {
 		log.Fatal(err)
 	}
-
-	tmpl, err := im.Render()
+	head, err := im.Render()
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	fmt.Println(tmpl)
+	fmt.Println(head)
 }
 ```
-This code initializes ImportMap with default settings, fetches the specified libraries from your chosen provider, and generates an HTML snippet containing the necessary script and link tags.
 
-Asset downloads use the context supplied to `Fetch` or `CacheOrFetch`, reject
-unsuccessful HTTP responses, and publish files only after a complete download.
-Retrying a failed fetch fills missing cache files without downloading complete
-files again.
+The generated head contains a stylesheet link to `/assets/bootstrap/css/bootstrap.min.css` and an import map mapping `htmx` to `/assets/htmx/htmx.esm.min.js`. It also includes the configured ES module shim. Import the module after the map:
 
-
-Resulting in the following output:
 ```html
-<link rel="stylesheet" href="/assets/css/bootstrap.min.css" as="bootstrap"/>
-<script async src="https://ga.jspm.io/npm:es-module-shims@1.7.0"></script>
-<script type="importmap">
-    {
-      "bootstrap": "/assets/js/bootstrap.min.js",
-      "htmx": "/assets/htmx.min.js",
-      "json-enc": "/assets/ext/json-enc.js"
-    }
+<script type="module">
+    import htmx from "htmx";
+    window.htmx = htmx;
 </script>
 ```
-This above example initializes ImportMap with default settings and fetches the specified library packages from cdnjs. 
-It then generates an import map with the required JavaScript and CSS files, including the ES module shim 
-for compatibility with older browsers. 
 
-Finally, it renders the HTML block with the necessary script tags for the libraries.
+An import map maps names to URLs; it does not execute modules. Use ESM files for module imports and ordinary script tags for libraries distributed as classic scripts.
 
-## Configuration
+## Serving local assets
 
-ImportMap offers several methods to customize its behavior according to your project's needs:
-
- - **WithDefaults()**: Initialize with sensible defaults for cache and asset directories.
- - **WithProvider(provider Provider)**: Set a custom provider for fetching library files.
- - **WithPackages(packages []library.Package)**: Add one or more library packages.
- - **WithPackage(package library.Package)**: Adds a single library package to the import map.
- - **AssetsDir(dir string)**: Sets the directory path for assets, default is `assets`.
- - **CacheDir(dir string)**: Sets the directory path for the cache, default is `.importmap`.
- - **RootDir(dir string)**: Sets the directory paths for assets, cache, and root directories, respectively.
- - **ShimPath(sp string)**:Specify the ES module shim URL.
-
-`RootDir` controls filesystem reads and writes. For example, with
-`RootDir("/srv/my-app")` and `AssetsDir("assets")`, downloaded assets live below
-`/srv/my-app/assets`, while generated URLs still start with `/assets/`.
-`CacheOrFetch` can read or rebuild assets from the versioned cache under that
-root without changing the working directory or contacting a provider.
-
-## RAW Imports
-
-it is possible to bypass the cdnjs by using the using the Raw provider:
+With the defaults, serve the generated `assets` directory at `/assets/`:
 
 ```go
-pr := cdnjs.New()
-im := New().WithProvider(pr).WithLogger(slog.Default())
-
-im.WithPackages([]library.Package{
-    {
-        Name:     "htmx",
-        Version:  "2.0.4",
-        Provider: raw.New("https://unpkg.com/browse/htmx.org@2.0.4/dist/htmx.min.js"),
-    },
-})
-```
-results in generating:
-```json
-    {"imports":{"htmx":"https://unpkg.com/browse/htmx.org@1.8.6/dist/htmx.min.js"}}
+mux.Handle("GET /assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
 ```
 
-### jsdelivr ESM imports can be fetched using the jsdelivr provider:
+`RootDir` controls filesystem reads and writes, while `AssetsDir` controls the asset directory and public URL prefix. For example, `RootDir("/srv/my-app").AssetsDir("assets")` writes below `/srv/my-app/assets`, while URLs still begin with `/assets/`. Serve that absolute directory if your working directory is elsewhere.
 
-```go
-  im := importmap.
-    NewDefaults().
-    WithProvider(cdnjs.New()).
-    AssetsDir(path.Join("assets")).
-    WithPackages([]library.Package{
-    {
-      Name:    "htmx",
-      Version: "2.0.4",
-      Require: []library.Include{
-        {File: "htmx.esm.min.js"},
-        {File: "/ext/json-enc.js", As: "json-enc"},
-	  },
-	},{
-      Provider: jsdelivr.NewESM(), // <!-- Use jsdelivr ESM provider -->
-      Name:     "@simonwep/pickr",
-      Version:  "1.9.1",
-      Require: []library.Include{
-        {File: "/esm-bundle.js", As: "pickr"}, // <!-- Get the ESM bundle -->
-        {File: "/dist/themes/nano.min.css", As: "nano.min.css"},
-	  },
-	},
-  })
-```
+Pin package versions, prepare assets before deployment, and ship the generated files with your application. Cache files live below `.importmap/<package>/<version>/`; public assets live below `assets/<package>/`. `CacheOrFetch` can rebuild missing assets from a complete cache without contacting the provider. Keep package configuration fixed once serving begins.
 
-## Contributing
+## Providers and configuration
 
-Contributions are welcome!
-Whether it's bug reports, feature requests, or code contributions,
-please feel free to reach out or submit a pull request.
+| Provider | Import path | Constructor |
+|----------|-------------|-------------|
+| cdnjs (default) | `client/cdnjs` | `cdnjs.New()` |
+| jsDelivr | `client/jsdelivr` | `jsdelivr.New()` or `jsdelivr.NewESM()` |
+| unpkg | `client/unpkg` | `unpkg.New()` |
+| Skypack | `client/skypack` | `skypack.New()` |
+| esm.sh | `client/esm` | `esm.New()` |
+| Raw URL | `client/raw` | `raw.New(url)` |
+
+Provider paths are relative to `github.com/donseba/go-importmap`. Implement `library.Provider` to add your own. Set a default with `WithProvider`, or override it through `library.Package.Provider`.
+
+- `NewDefaults()` creates an import map with cdnjs, `assets`, `.importmap`, and an ES module shim; `New().WithDefaults()` is equivalent.
+- `WithPackages` replaces the configured list; `WithPackage` appends one package.
+- `library.Include.File` selects a provider file; `As` gives it an import name.
+- `CacheDir`, `AssetsDir`, and `RootDir` set storage paths; `ShimPath` sets the shim URL.
+- `WithLogger` adds a `*slog.Logger`.
+- `Fetch` contacts providers; `CacheOrFetch` reuses cached files when possible.
+- `Render` produces the head HTML; `Imports` produces import-map JSON; `Marshal` includes imports, scopes, and styles.
+
+Downloads use the supplied context, reject unsuccessful HTTP responses, and publish files only after a complete download. Retrying a failed fetch fills missing files without downloading complete files again.
+
+## Raw URLs
+
+For a single URL to download and cache locally, configure the package's `Provider` with `raw.New(url)` from `github.com/donseba/go-importmap/client/raw`. The raw provider uses the package name as the local filename; give that name a `.js` or `.css` extension so rendering can recognize the asset type. Public files still live below the package's asset directory.
+
 ## License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under the MIT License. See [LICENSE](LICENSE).
