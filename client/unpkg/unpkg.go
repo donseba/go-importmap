@@ -72,7 +72,7 @@ func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (l
 	if err != nil {
 		return nil, "", err
 	}
-	defer resp.Body.Close()
+	defer func(resp *http.Response) { _ = resp.Body.Close() }(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, "", fmt.Errorf("unpkg API responded with status %d", resp.StatusCode)
@@ -106,10 +106,10 @@ func (c *Client) walkFiles(listings []UnpkgFileListing, basePath string, files *
 
 			var subdir UnpkgMetaResponse
 			err = json.NewDecoder(resp.Body).Decode(&subdir)
+			_ = resp.Body.Close()
 			if err != nil {
 				continue
 			}
-			resp.Body.Close()
 
 			c.walkFiles(subdir.Files, basePath, files)
 		} else {
@@ -134,7 +134,7 @@ func (c *Client) getLatestVersion(ctx context.Context, name string) (string, err
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func(resp *http.Response) { _ = resp.Body.Close() }(resp)
 
 	var pkg struct {
 		DistTags struct {

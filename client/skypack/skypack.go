@@ -64,10 +64,10 @@ func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (l
 	if err != nil {
 		return nil, "", err
 	}
-	defer resp.Body.Close()
+	defer func(resp *http.Response) { _ = resp.Body.Close() }(resp)
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, "", fmt.Errorf("Skypack package API responded with code %d", resp.StatusCode)
+		return nil, "", fmt.Errorf("Skypack package API responded with code %d", resp.StatusCode) //nolint:staticcheck // Skypack is a product name.
 	}
 
 	var pr PackageResponse
@@ -92,7 +92,7 @@ func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (l
 	if err != nil {
 		return nil, "", err
 	}
-	defer resp.Body.Close()
+	defer func(resp *http.Response) { _ = resp.Body.Close() }(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, "", fmt.Errorf("skypack browse API responded with code %d", resp.StatusCode)

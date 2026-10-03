@@ -28,10 +28,10 @@ type Include struct {
 func (I Includes) Get(s string) *Include {
 	for _, i := range I {
 		// Compile the pattern, assuming 'File' is a valid regex pattern
-		pattern := "^" + strings.Trim(i.File, `/`) + "$"    // Ensure the pattern matches the entire string
-		pattern = strings.Replace(pattern, "**/", "**", -1) // Ensure the pattern matches the entire string
-		pattern = strings.Replace(pattern, ".", "\\.", -1)  // Ensure the pattern matches the entire string
-		pattern = strings.Replace(pattern, "**", ".*", -1)  // Ensure the pattern matches the entire string
+		pattern := "^" + strings.Trim(i.File, `/`) + "$"   // Ensure the pattern matches the entire string
+		pattern = strings.ReplaceAll(pattern, "**/", "**") // Ensure the pattern matches the entire string
+		pattern = strings.ReplaceAll(pattern, ".", "\\.")  // Ensure the pattern matches the entire string
+		pattern = strings.ReplaceAll(pattern, "**", ".*")  // Ensure the pattern matches the entire string
 
 		re, err := regexp.Compile(pattern)
 		if err != nil {
