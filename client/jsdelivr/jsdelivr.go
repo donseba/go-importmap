@@ -100,7 +100,7 @@ func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (l
 	if err != nil {
 		return nil, "", err
 	}
-	defer resp.Body.Close()
+	defer func(resp *http.Response) { _ = resp.Body.Close() }(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, "", fmt.Errorf("client api responded with code %d", resp.StatusCode)
@@ -137,7 +137,7 @@ func (c *Client) FetchPackageFiles(ctx context.Context, name, version string) (l
 	if err != nil {
 		return nil, "", err
 	}
-	defer resp.Body.Close()
+	defer func(resp *http.Response) { _ = resp.Body.Close() }(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, "", fmt.Errorf("client api responded with code %d", resp.StatusCode)

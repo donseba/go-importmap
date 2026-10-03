@@ -28,10 +28,10 @@ type Include struct {
 func (I Includes) Get(s string) *Include {
 	for _, i := range I {
 		// Compile the pattern, assuming 'File' is a valid regex pattern
-		pattern := "^" + strings.Trim(i.File, `/`) + "$"    // Ensure the pattern matches the entire string
-		pattern = strings.Replace(pattern, "**/", "**", -1) // Ensure the pattern matches the entire string
-		pattern = strings.Replace(pattern, ".", "\\.", -1)  // Ensure the pattern matches the entire string
-		pattern = strings.Replace(pattern, "**", ".*", -1)  // Ensure the pattern matches the entire string
+		pattern := "^" + strings.Trim(i.File, `/`) + "$"   // Ensure the pattern matches the entire string
+		pattern = strings.ReplaceAll(pattern, "**/", "**") // Ensure the pattern matches the entire string
+		pattern = strings.ReplaceAll(pattern, ".", "\\.")  // Ensure the pattern matches the entire string
+		pattern = strings.ReplaceAll(pattern, "**", ".*")  // Ensure the pattern matches the entire string
 
 		re, err := regexp.Compile(pattern)
 		if err != nil {
@@ -105,13 +105,13 @@ func (p *Package) MakeCache(rootDir string, cacheDir string, filePath string, sr
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	resp, err := http.Get(src)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	_, err = io.Copy(file, resp.Body)
 	if err != nil {
@@ -221,7 +221,7 @@ func (p *Package) MakeAssets(rootDir string, cacheDir string, assetsDir string, 
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	if cacheDir != "" && p.HasCache(rootDir, cacheDir) {
 		cachePath := path.Join(rootDir, p.CacheDir(cacheDir), filePath)
@@ -242,7 +242,7 @@ func (p *Package) MakeAssets(rootDir string, cacheDir string, assetsDir string, 
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	_, err = io.Copy(file, resp.Body)
 	if err != nil {
