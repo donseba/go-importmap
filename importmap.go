@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/donseba/go-importmap/client/cdnjs"
 	"github.com/donseba/go-importmap/library"
@@ -158,7 +159,7 @@ func (im *ImportMap) CacheOrFetch(ctx context.Context) error {
 				im.logger.InfoContext(ctx, "assets not found, building from cache", "package", pkg.Name)
 			}
 			// Build assets from cache
-			allFiles, _, err := pkg.Assets(*im.cacheDir, "")
+			allFiles, err := pkg.CacheFiles(im.rootDir, *im.cacheDir)
 			if err != nil {
 				if im.logger != nil {
 					im.logger.ErrorContext(ctx, "error reading cache for assets", "package", pkg.Name, "error", err)
@@ -176,7 +177,7 @@ func (im *ImportMap) CacheOrFetch(ctx context.Context) error {
 		}
 
 		// Always update Structure.Imports with asset paths
-		allFiles, _, err := pkg.Assets(*im.assetsDir, "")
+		allFiles, _, err := pkg.AssetsAt(im.rootDir, *im.assetsDir, "")
 		if err != nil {
 			if im.logger != nil {
 				im.logger.ErrorContext(ctx, "error reading assets", "package", pkg.Name, "error", err)
@@ -274,7 +275,7 @@ func (im *ImportMap) Fetch(ctx context.Context) error {
 				}
 
 				assetFiles = append(assetFiles, library.Include{
-					File: path.Join(im.rootDir, pkg.AssetsDir(*im.assetsDir), file.LocalPath),
+					File: path.Join(pkg.AssetsDir(*im.assetsDir), file.LocalPath),
 					As:   as,
 				})
 			} else {
@@ -287,7 +288,7 @@ func (im *ImportMap) Fetch(ctx context.Context) error {
 
 		for _, file := range assetFiles {
 			// check if it starts with a /, if not, add it
-			if file.File[0] != '/' && file.File[0] != 'h' {
+			if !strings.HasPrefix(file.File, "/") && !strings.HasPrefix(file.File, "http://") && !strings.HasPrefix(file.File, "https://") {
 				file.File = "/" + file.File
 
 			}
