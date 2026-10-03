@@ -209,7 +209,7 @@ func (p *Package) MakeAssetsContext(ctx context.Context, rootDir, cacheDir, asse
 		if err != nil {
 			return err
 		}
-		defer cacheFile.Close()
+		defer func() { _ = cacheFile.Close() }()
 		return writeFile(ctx, fullPath, cacheFile)
 	}
 	return downloadFile(ctx, fullPath, src)
@@ -224,7 +224,7 @@ func downloadFile(ctx context.Context, filename, src string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		return fmt.Errorf("download %s: HTTP %s", src, resp.Status)
 	}
@@ -242,8 +242,8 @@ func writeFile(ctx context.Context, filename string, source io.Reader) error {
 	if err != nil {
 		return err
 	}
-	defer os.Remove(file.Name())
-	defer file.Close()
+	defer func() { _ = os.Remove(file.Name()) }()
+	defer func() { _ = file.Close() }()
 	if _, err := io.Copy(file, source); err != nil {
 		return err
 	}
