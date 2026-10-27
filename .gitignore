@@ -17,4 +17,8 @@
 example/assets/
 example/.importmap/
 .importmap
-assets
+# Files the example and older tests published; the assets package and the
+# logo live here too.
+/assets/*
+!/assets/*.go
+!/assets/go-importmap-logo.png

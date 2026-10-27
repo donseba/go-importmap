@@ -51,7 +51,7 @@ func TestImportMapWithLocalAssets(t *testing.T) {
 		WithPackages([]library.Package{
 			{
 				Name:    "htmx",
-				Version: "1.9.10",
+				Version: "4.0.0",
 				Require: []library.Include{
 					{
 						File: "htmx.min.js",
@@ -100,7 +100,7 @@ func TestImportMapWithLocalAssets(t *testing.T) {
 		return
 	}
 
-	if string(outStyles) != `<link rel="stylesheet" href="/assets/bootstrap/css/bootstrap.min.css" as="bootstrap">` {
+	if string(outStyles) != `<link rel="stylesheet" href="/assets/bootstrap/css/bootstrap.min.css">` {
 		t.Log(outStyles)
 		t.Error("json output mismatch")
 		return
@@ -112,8 +112,7 @@ func TestImportMapWithLocalAssets(t *testing.T) {
 		return
 	}
 
-	if string(full) != `<link rel="stylesheet" href="/assets/bootstrap/css/bootstrap.min.css" as="bootstrap"/>
-<script async src="https://ga.jspm.io/npm:es-module-shims@2.0.10/dist/es-module-shims.js"></script>
+	if string(full) != `<link rel="stylesheet" href="/assets/bootstrap/css/bootstrap.min.css"/>
 <script type="importmap">
 {
   "imports": {
@@ -190,7 +189,7 @@ func TestImportMapWithLocalAssetsJsDeliver(t *testing.T) {
 		return
 	}
 
-	if string(outStyles) != `<link rel="stylesheet" href="/assets/bootstrap/dist/css/bootstrap.min.css" as="bootstrap">` {
+	if string(outStyles) != `<link rel="stylesheet" href="/assets/bootstrap/dist/css/bootstrap.min.css">` {
 		t.Log(outStyles)
 		t.Error("json output mismatch")
 		return
@@ -202,8 +201,7 @@ func TestImportMapWithLocalAssetsJsDeliver(t *testing.T) {
 		return
 	}
 
-	if string(full) != `<link rel="stylesheet" href="/assets/bootstrap/dist/css/bootstrap.min.css" as="bootstrap"/>
-<script async src="https://ga.jspm.io/npm:es-module-shims@2.0.10/dist/es-module-shims.js"></script>
+	if string(full) != `<link rel="stylesheet" href="/assets/bootstrap/dist/css/bootstrap.min.css"/>
 <script type="importmap">
 {
   "imports": {
@@ -226,10 +224,10 @@ func TestImportRaw(t *testing.T) {
 	im.WithPackages([]library.Package{
 		{
 			Name:    "htmx",
-			Version: "1.8.6",
+			Version: "4.0.0",
 			Require: []library.Include{
 				{
-					Raw: "https://unpkg.com/browse/htmx.org@1.8.6/dist/htmx.min.js",
+					Raw: "https://unpkg.com/browse/htmx.org@4.0.0/dist/htmx.min.js",
 					As:  "htmx",
 				},
 			},
@@ -248,7 +246,7 @@ func TestImportRaw(t *testing.T) {
 		return
 	}
 
-	if string(out) != `{"imports":{"htmx":"https://unpkg.com/browse/htmx.org@1.8.6/dist/htmx.min.js"}}` {
+	if string(out) != `{"imports":{"htmx":"https://unpkg.com/browse/htmx.org@4.0.0/dist/htmx.min.js"}}` {
 		t.Error("json output mismatch")
 		return
 	}
@@ -261,8 +259,8 @@ func TestImportRawClient(t *testing.T) {
 	im.WithPackages([]library.Package{
 		{
 			Name:     "htmx",
-			Version:  "2.0.4",
-			Provider: raw.New("https://unpkg.com/browse/htmx.org@2.0.4/dist/htmx.min.js"),
+			Version:  "4.0.0",
+			Provider: raw.New("https://unpkg.com/browse/htmx.org@4.0.0/dist/htmx.min.js"),
 		},
 	})
 
@@ -278,7 +276,7 @@ func TestImportRawClient(t *testing.T) {
 		return
 	}
 
-	if string(out) != `{"imports":{"htmx":"https://unpkg.com/browse/htmx.org@2.0.4/dist/htmx.min.js"}}` {
+	if string(out) != `{"imports":{"htmx":"https://unpkg.com/browse/htmx.org@4.0.0/dist/htmx.min.js"}}` {
 		t.Error("json output mismatch")
 		return
 	}
