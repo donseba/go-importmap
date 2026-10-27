@@ -15,8 +15,8 @@ func TestFetchPackageFilesUsesRequestedVersion(t *testing.T) {
 		switch r.URL.Path {
 		case "/libraries/htmx":
 			_, _ = w.Write([]byte(`{"version":"4.0.0","filename":"htmx.min.js","assets":[{"version":"4.0.0","files":["htmx.min.js"]}]}`))
-		case "/libraries/htmx/1.8.6":
-			_, _ = w.Write([]byte(`{"version":"1.8.6","files":["htmx.min.js","ext/json-enc.js"]}`))
+		case "/libraries/htmx/4.0.0":
+			_, _ = w.Write([]byte(`{"version":"4.0.0","files":["htmx.min.js","ext/json-enc.js"]}`))
 		default:
 			http.NotFound(w, r)
 		}
@@ -25,15 +25,18 @@ func TestFetchPackageFilesUsesRequestedVersion(t *testing.T) {
 
 	client := New()
 	client.apiBaseURL = server.URL + "/libraries/"
-	files, version, err := client.FetchPackageFiles(t.Context(), "htmx", "1.8.6")
+
+	files, version, err := client.FetchPackageFiles(t.Context(), "htmx", "4.0.0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if version != "1.8.6" || len(files) != 2 || files[1].LocalPath != "ext/json-enc.js" ||
-		files[1].Path != "https://cdnjs.cloudflare.com/ajax/libs/htmx/1.8.6/ext/json-enc.js" {
+
+	if version != "4.0.0" || len(files) != 2 || files[1].LocalPath != "ext/json-enc.js" ||
+		files[1].Path != "https://cdnjs.cloudflare.com/ajax/libs/htmx/4.0.0/ext/json-enc.js" {
 		t.Fatalf("unexpected version or files: %q, %#v", version, files)
 	}
-	if strings.Join(paths, ",") != "/libraries/htmx/1.8.6" {
+
+	if strings.Join(paths, ",") != "/libraries/htmx/4.0.0" {
 		t.Fatalf("requested wrong endpoint: %v", paths)
 	}
 

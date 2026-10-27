@@ -25,19 +25,13 @@ type Include struct {
 	As   string
 }
 
+// Get returns the first Include whose File pattern matches the whole path
+// s, or nil. A pattern that is not valid matches nothing; Check reports it.
 func (I Includes) Get(s string) *Include {
 	for _, i := range I {
-		// Compile the pattern, assuming 'File' is a valid regex pattern
-		pattern := "^" + strings.Trim(i.File, `/`) + "$"   // Ensure the pattern matches the entire string
-		pattern = strings.ReplaceAll(pattern, "**/", "**") // Ensure the pattern matches the entire string
-		pattern = strings.ReplaceAll(pattern, ".", "\\.")  // Ensure the pattern matches the entire string
-		pattern = strings.ReplaceAll(pattern, "**", ".*")  // Ensure the pattern matches the entire string
-
-		re, err := regexp.Compile(pattern)
+		re, err := i.pattern()
 		if err != nil {
-			fmt.Println(err)
-			// Handle the error (e.g., log or panic depending on your error handling strategy)
-			continue // For this example, we'll just skip this iteration
+			continue
 		}
 
 		if re.MatchString(s) {
@@ -46,6 +40,30 @@ func (I Includes) Get(s string) *Include {
 	}
 
 	return nil
+}
+
+// Check returns an error for the first File pattern that is not a valid
+// pattern, such as one with an unclosed bracket.
+func (I Includes) Check() error {
+	for _, i := range I {
+		if _, err := i.pattern(); err != nil {
+			return fmt.Errorf("require pattern %q: %w", i.File, err)
+		}
+	}
+
+	return nil
+}
+
+// pattern is the regular expression of the File pattern, which matches a
+// whole path: "**" matches any characters, a dot matches itself, and the
+// rest is a regular expression.
+func (I Include) pattern() (*regexp.Regexp, error) {
+	pattern := "^" + strings.Trim(I.File, `/`) + "$"
+	pattern = strings.ReplaceAll(pattern, "**/", "**")
+	pattern = strings.ReplaceAll(pattern, ".", "\\.")
+	pattern = strings.ReplaceAll(pattern, "**", ".*")
+
+	return regexp.Compile(pattern)
 }
 
 func (I Include) Name() string {
@@ -70,6 +88,18 @@ type Package struct {
 	Version  string
 	Provider Provider
 	Require  Includes // Patterns to specify which files to include
+	// License is the licence text Vendor copies with the package: a file of
+	// the package or a URL. Without it Vendor looks for a LICENSE, LICENCE
+	// or COPYING file among the package's files.
+	License string
+	// Local marks files the application builds itself, such as a bundle
+	// made with esbuild, rather than a package to download. Vendor records
+	// the integrity of the files Require lists, by their exact paths
+	// relative to the vendor directory (they may start with "../"), in the
+	// lock, so FromFS and importmap verify check them like vendored files.
+	// License is such a path too. Nothing is downloaded, and Fetch and
+	// CacheOrFetch leave local packages out.
+	Local bool
 }
 
 // CacheDir returns the cache dir for the current package, we will store all files in here
