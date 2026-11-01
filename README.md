@@ -6,6 +6,9 @@
 
 # go-importmap
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/donseba/go-importmap.svg)](https://pkg.go.dev/github.com/donseba/go-importmap)
+[![codecov](https://codecov.io/gh/donseba/go-importmap/graph/badge.svg)](https://codecov.io/gh/donseba/go-importmap)
+
 [Documentation](https://docs.gowebthings.com/go-importmap) · Part of [go-webthings](https://gowebthings.com/components).
 
 go-importmap fetches JavaScript and CSS packages from CDNs and generates import maps and stylesheet tags for Go templates. Packages can be vendored at build time and embedded in the program, so it needs no network at run time, and their files are served with versioned URLs, strong ETags and Subresource Integrity.
