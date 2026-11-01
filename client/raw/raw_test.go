@@ -3,6 +3,8 @@ package raw
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/donseba/go-importmap/library"
 )
 
 func TestNew(t *testing.T) {
@@ -29,4 +31,27 @@ func TestNew(t *testing.T) {
 	}
 
 	t.Log(string(out))
+}
+
+func TestFetchPackageFilesWithoutURL(t *testing.T) {
+	files, version, err := New("").FetchPackageFiles(t.Context(), "htmx.org", "4.0.0")
+	if err == nil || err.Error() != "raw provider URL is empty" {
+		t.Fatalf("error = %v, want raw provider URL is empty", err)
+	}
+
+	if files != nil || version != "" {
+		t.Fatalf("FetchPackageFiles = %q, %+v with an error, want nothing", version, files)
+	}
+}
+
+func TestFetchPackageFilesKeepsURLAndVersion(t *testing.T) {
+	files, version, err := New("https://cdn.example/htmx.org/dist/htmx.min.css").FetchPackageFiles(t.Context(), "htmx-styles", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := library.File{Type: library.FileTypeCSS, Path: "https://cdn.example/htmx.org/dist/htmx.min.css", LocalPath: "htmx-styles"}
+	if version != "" || len(files) != 1 || files[0] != want {
+		t.Fatalf("FetchPackageFiles = %q, %+v, want no version and %+v", version, files, want)
+	}
 }
